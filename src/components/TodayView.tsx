@@ -468,113 +468,21 @@ export default function TodayView({
         </div>
       </div>
 
-      {/* Block 4: Течение дня (Timeline) */}
-      <div className="w-full flex flex-col space-y-4" id="block_timeline">
-        <div className="flex justify-between items-center px-2">
-          <span className="text-white/40 text-[13px] font-sans font-semibold tracking-wider uppercase">
-            Течение дня
-          </span>
-          {daySlots.length < 5 && (
-            <button 
-              onClick={addNewSlot}
-              className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/5 active:scale-90 transition-all"
-              title="Добавить слот"
-            >
-              <Plus className="w-4.5 h-4.5" />
-            </button>
-          )}
-        </div>
-
-        <div className="flex flex-col space-y-5 relative before:absolute before:top-2 before:bottom-2 before:left-[21px] before:w-[1px] before:bg-white/10">
-          {daySlots.map((slot) => {
-            const isEditing = editingSlotId === slot.id;
-            return (
-              <div 
-                key={slot.id}
-                className="flex items-center space-x-4 relative group"
-              >
-                {/* Timeline node */}
-                <div className="w-11 h-11 flex items-center justify-center rounded-xl bg-[#090b14]/90 border border-white/10 z-10 shrink-0 text-white/50 text-[11px] font-mono font-medium shadow-md">
-                  {slot.time}
-                </div>
-
-                {/* Timeline content glass slot card */}
-                <div className="flex-1 bg-white/[0.015] border border-white/[0.05] rounded-[22px] p-4 flex items-center justify-between hover:bg-white/[0.04] transition-all">
-                  {isEditing ? (
-                    <div className="flex flex-col space-y-2.5 w-full">
-                      <div className="flex space-x-2">
-                        <input 
-                          type="text" 
-                          value={editTime}
-                          onChange={(e) => setEditingTime(e.target.value)}
-                          className="bg-black/40 text-white font-mono text-xs px-2 py-1.5 rounded-lg border border-white/10 w-16" 
-                          placeholder="08:00"
-                        />
-                        <input 
-                          type="text" 
-                          value={editTitle}
-                          onChange={(e) => setEditingTitle(e.target.value)}
-                          className="bg-black/40 text-white text-xs px-2.5 py-1.5 rounded-lg border border-white/10 flex-1" 
-                          placeholder="Название практики"
-                        />
-                      </div>
-                      <div className="flex justify-end space-x-2 pt-1">
-                        <button 
-                          onClick={() => deleteSlot(slot.id)}
-                          className="text-xs text-rose-400 hover:text-rose-350 font-mono py-1 px-2.5"
-                        >
-                          Удалить
-                        </button>
-                        <button 
-                          onClick={() => handleSaveSlot(slot.id)}
-                          className="text-xs text-green-400 hover:text-green-350 font-mono py-1 px-2.5"
-                        >
-                          Сохранить
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex flex-col space-y-0.5">
-                        <span className="text-white/90 text-sm font-semibold">{slot.title}</span>
-                        <span className="text-[12px] text-white/30 font-mono">
-                          {slot.practiceId ? 'Запланировано' : 'Свободный интервал'}
-                        </span>
-                      </div>
-                      <div className="flex space-x-1.5 opacity-40 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={() => {
-                            const matched = ALL_PRACTICES.find(p => p.id === slot.practiceId || p.name.includes(slot.title));
-                            if (matched) {
-                              onStartPractice(matched);
-                            } else {
-                              onStartPractice(ALL_PRACTICES[2]); // default box-breathing
-                            }
-                          }}
-                          className="p-1 px-3 rounded-xl bg-white/10 text-[11px] font-semibold text-white/90 hover:bg-white/20"
-                        >
-                          {slot.practiceId ? 'Запустить' : '+'}
-                        </button>
-                        <button 
-                          onClick={() => {
-                            setEditingSlotId(slot.id);
-                            setEditingTitle(slot.title);
-                            setEditingTime(slot.time);
-                          }}
-                          className="p-1.5 rounded-xl hover:bg-white/10 text-white/40 hover:text-white"
-                          title="Редактировать"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      {/* Block 4: Течение дня — timeline with actual practice data */}
+      <TimelineBlock
+        daySlots={daySlots}
+        editingSlotId={editingSlotId}
+        editTitle={editTitle}
+        editTime={editTime}
+        setEditingTitle={setEditingTitle}
+        setEditingTime={setEditingTime}
+        setEditingSlotId={setEditingSlotId}
+        handleSaveSlot={handleSaveSlot}
+        deleteSlot={deleteSlot}
+        addNewSlot={addNewSlot}
+        onStartPractice={onStartPractice}
+        practiceLogs={practiceLogs}
+      />
 
       {/* Block 5: Полезное чтение (Horizontal scroll) */}
       <div className="flex flex-col space-y-3.5" id="block_today_useful_read">
@@ -602,6 +510,229 @@ export default function TodayView({
         </div>
       </div>
 
+    </div>
+  );
+}
+
+// ===== TimelineBlock — объединяет выполненные практики и план дня =====
+
+const GROUP_COLORS: Record<string, string> = {
+  'Исток': '#E6B85C',
+  'Тишина': '#8899AA',
+  'Энергия': '#D4875E',
+  'Ясность': '#8AB4C8',
+};
+const GROUP_ICONS: Record<string, string> = {
+  'Исток': '✦',
+  'Тишина': '◈',
+  'Энергия': '◉',
+  'Ясность': '◇',
+};
+
+interface TimelineBlockProps {
+  daySlots: { id: number; time: string; title: string; practiceId: string }[];
+  editingSlotId: number | null;
+  editTitle: string;
+  editTime: string;
+  setEditingTitle: (v: string) => void;
+  setEditingTime: (v: string) => void;
+  setEditingSlotId: (v: number | null) => void;
+  handleSaveSlot: (id: number) => void;
+  deleteSlot: (id: number) => void;
+  addNewSlot: () => void;
+  onStartPractice: (practice: Practice) => void;
+  practiceLogs: ActivityLog[];
+}
+
+function TimelineBlock({
+  daySlots, editingSlotId, editTitle, editTime,
+  setEditingTitle, setEditingTime, setEditingSlotId,
+  handleSaveSlot, deleteSlot, addNewSlot,
+  onStartPractice, practiceLogs,
+}: TimelineBlockProps) {
+  const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+  const gapThreshold = 90;
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  const completed = practiceLogs
+    .filter(log => log.date.startsWith(todayStr))
+    .map(log => {
+      const d = new Date(log.date);
+      const h = d.getHours();
+      const m = d.getMinutes();
+      const group = log.type === 'focus' ? 'Ясность' : log.type === 'walk' || log.type === 'run' || log.type === 'bike' ? 'Энергия' : log.type === 'audio' ? 'Тишина' : 'Исток';
+      return {
+        id: log.id,
+        time: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
+        mins: h * 60 + m,
+        title: log.practiceName || 'Практика',
+        group,
+        duration: log.durationMinutes,
+        type: 'completed' as const,
+      };
+    });
+
+  const completedTitles = new Set(completed.map(c => c.title.toLowerCase()));
+
+  const planned = daySlots
+    .filter(s => !completedTitles.has(s.title.toLowerCase()))
+    .map(s => {
+      const [h, m] = s.time.split(':').map(Number);
+      return {
+        id: String(s.id),
+        time: s.time,
+        mins: h * 60 + m,
+        title: s.title,
+        practiceId: s.practiceId,
+        type: 'planned' as const,
+      };
+    });
+
+  const events = [...completed, ...planned].sort((a, b) => a.mins - b.mins);
+
+  const totalDuration = completed.reduce((s, c) => s + c.duration, 0);
+  const totalMinutes = Math.round(totalDuration);
+  const planCount = daySlots.filter(s => s.practiceId).length;
+
+  const formatDuration = (min: number) => {
+    if (min < 1) return `${Math.round(min * 60)}с`;
+    if (min < 60) return `${min} мин`;
+    return `${Math.floor(min / 60)}ч ${min % 60}м`;
+  };
+
+  return (
+    <div className="w-full flex flex-col space-y-4" id="block_timeline">
+      <div className="flex justify-between items-center px-2">
+        <div className="flex flex-col space-y-0.5">
+          <span className="text-white/40 text-[13px] font-sans font-semibold tracking-wider uppercase">
+            Течение дня
+          </span>
+          <div className="flex items-center space-x-2 text-[10px] text-white/30 font-mono">
+            <span>{completed.length} практики</span>
+            <span className="text-[6px]">·</span>
+            <span>{totalMinutes} мин</span>
+            <span className="text-[6px]">·</span>
+            <span className={completed.length >= planCount ? 'text-emerald-400/60' : 'text-amber-400/60'}>
+              {completed.length}/{planCount} плана
+            </span>
+          </div>
+        </div>
+        {daySlots.length < 5 && (
+          <button onClick={addNewSlot}
+            className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/5 active:scale-90 transition-all"
+            title="Добавить слот">
+            <Plus className="w-4.5 h-4.5" />
+          </button>
+        )}
+      </div>
+
+      <div className="flex flex-col relative pl-12 before:absolute before:top-2 before:bottom-2 before:left-[21px] before:w-[1px] before:bg-gradient-to-b before:from-white/[0.04] before:via-white/[0.12] before:to-white/[0.04]">
+        {events.map((ev, idx) => {
+          const prev = idx > 0 ? events[idx - 1] : null;
+          const gap = prev ? ev.mins - prev.mins : 0;
+          const isEditing = ev.type === 'planned' && editingSlotId === Number(ev.id);
+          const isFuture = ev.type === 'planned' && ev.mins > nowMinutes;
+          const isMissed = ev.type === 'planned' && ev.mins <= nowMinutes;
+          const groupColor = ev.type === 'completed' ? GROUP_COLORS[ev.group || 'Исток'] || '#E6B85C' : '#888';
+
+          return (
+            <React.Fragment key={`${ev.type}-${ev.id}`}>
+              {gap > gapThreshold && (
+                <div className="flex items-center py-2 select-none">
+                  <div className="absolute left-[21px] w-[3px] h-px bg-white/[0.02]" />
+                  <div className="flex-1 flex items-center gap-2">
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/[0.02] to-transparent" />
+                    <span className="text-[8px] font-mono text-white/10 tracking-widest">
+                      {gap >= 120 ? `${Math.floor(gap / 60)}ч ` : ''}{gap % 60}мин тишины
+                    </span>
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/[0.02] to-transparent" />
+                  </div>
+                </div>
+              )}
+
+              {ev.type === 'completed' ? (
+                <div className="flex items-center space-x-4 py-1.5 group cursor-pointer select-none"
+                  onClick={() => {
+                    const matched = ALL_PRACTICES.find(p => p.name.includes(ev.title));
+                    if (matched) onStartPractice(matched);
+                  }}>
+                  <div className="absolute left-[17px] w-[9px] h-[9px] rounded-full z-10 shadow-[0_0_8px] transition-all duration-500"
+                    style={{ backgroundColor: groupColor, boxShadow: `0 0 8px ${groupColor}80` }} />
+                  <div className="w-11 h-11 flex items-center justify-center rounded-xl bg-[#090b14]/90 border border-white/10 shrink-0 text-[11px] font-mono font-medium shadow-md z-10"
+                    style={{ color: groupColor }}>
+                    {ev.time}
+                  </div>
+                  <div className="flex-1 flex items-center justify-between">
+                    <div className="flex flex-col space-y-0.5">
+                      <div className="flex items-center space-x-1.5">
+                        <span className="text-white/90 text-sm font-semibold">{ev.title}</span>
+                        <span className="text-[9px] font-mono text-white/30">{formatDuration(ev.duration || 0)}</span>
+                      </div>
+                      <span className="text-[10px] font-mono tracking-wider" style={{ color: `${groupColor}cc` }}>
+                        {GROUP_ICONS[ev.group || 'Исток']} {ev.group || 'Исток'} · ВЫПОЛНЕНО
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : isEditing ? (
+                <div className="flex items-center space-x-4 py-1.5">
+                  <div className="absolute left-[17px] w-[5px] h-[5px] rounded-full bg-white/20 z-10" />
+                  <div className="w-11 h-11 flex items-center justify-center rounded-xl bg-[#090b14]/90 border border-white/10 shrink-0 text-white/50 text-[11px] font-mono font-medium shadow-md z-10">
+                    {ev.time}
+                  </div>
+                  <div className="flex-1 flex flex-col space-y-2">
+                    <div className="flex space-x-2">
+                      <input type="text" value={editTime} onChange={(e) => setEditingTime(e.target.value)}
+                        className="bg-black/40 text-white font-mono text-xs px-2 py-1.5 rounded-lg border border-white/10 w-16" />
+                      <input type="text" value={editTitle} onChange={(e) => setEditingTitle(e.target.value)}
+                        className="bg-black/40 text-white text-xs px-2.5 py-1.5 rounded-lg border border-white/10 flex-1" />
+                    </div>
+                    <div className="flex justify-end space-x-2">
+                      <button onClick={() => deleteSlot(Number(ev.id))}
+                        className="text-xs text-rose-400/60 hover:text-rose-400 font-mono py-1 px-2.5">Удалить</button>
+                      <button onClick={() => handleSaveSlot(Number(ev.id))}
+                        className="text-xs text-green-400/60 hover:text-green-400 font-mono py-1 px-2.5">Сохранить</button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-4 py-1.5 group select-none">
+                  <div className={`absolute left-[17px] w-[5px] h-[5px] rounded-full z-10 transition-all duration-300 ${
+                    isFuture ? 'bg-white/25 group-hover:bg-white/40' : 'bg-white/8'
+                  }`} />
+                  <div className={`w-11 h-11 flex items-center justify-center rounded-xl bg-[#090b14]/90 border shrink-0 text-[11px] font-mono font-medium shadow-md z-10 ${
+                    isFuture ? 'border-white/10 text-white/50' : 'border-white/[0.04] text-white/20'
+                  }`}>
+                    {ev.time}
+                  </div>
+                  <div className={`flex-1 flex items-center justify-between ${
+                    isMissed ? 'opacity-40' : ''
+                  }`}>
+                    <div className="flex flex-col space-y-0.5 flex-1"
+                      onClick={() => {
+                        const matched = ALL_PRACTICES.find(p => p.id === ev.practiceId || p.name.includes(ev.title));
+                        if (matched) onStartPractice(matched);
+                      }}>
+                      <span className={`text-sm font-semibold transition-colors ${isFuture ? 'text-white/80 group-hover:text-white' : 'text-white/30 line-through'}`}>
+                        {ev.title}
+                      </span>
+                      <span className={`text-[10px] font-mono tracking-wider ${isFuture ? 'text-amber-400/50' : 'text-rose-400/30'}`}>
+                        {isFuture ? 'ЗАПЛАНИРОВАНО' : 'ПРОПУЩЕНО'}
+                      </span>
+                    </div>
+                    {isFuture && (
+                      <button onClick={() => { setEditingSlotId(Number(ev.id)); setEditingTitle(ev.title); setEditingTime(ev.time); }}
+                        className="p-1.5 rounded-xl opacity-0 group-hover:opacity-100 transition-all hover:bg-white/10 text-white/40 hover:text-white">
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
     </div>
   );
 }

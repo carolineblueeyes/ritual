@@ -18,8 +18,9 @@ import {
   BookOpen,
   X
 } from 'lucide-react';
-import { Achievement, Article, UserStats, HealthState } from '../types';
+import { Achievement, Article, UserStats, HealthState, ActivityLog } from '../types';
 import { INITIAL_ACHIEVEMENTS, EDUCATIONAL_ARTICLES } from '../data';
+import PracticeHeatmap from './PracticeHeatmap';
 
 interface ProgressViewProps {
   stats: UserStats;
@@ -28,6 +29,8 @@ interface ProgressViewProps {
   onOpenPlus: () => void;
   onOpenStore: () => void;
   onOpenArticle: (article: any) => void;
+  practiceLogs: ActivityLog[];
+  onOpenHeatmap: () => void;
 }
 
 export default function ProgressView({
@@ -36,7 +39,9 @@ export default function ProgressView({
   healthState,
   onOpenPlus,
   onOpenStore,
-  onOpenArticle
+  onOpenArticle,
+  practiceLogs,
+  onOpenHeatmap
 }: ProgressViewProps) {
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [showBadgeModal, setShowBadgeModal] = useState<Achievement | null>(null);
@@ -412,10 +417,8 @@ export default function ProgressView({
           
           <div className="flex justify-between items-center z-10 relative">
             <div className="flex flex-col space-y-1">
-              <span className="text-white/40 text-[13px] font-mono uppercase tracking-widest leading-none">Архив осознания</span>
               <h3 className="text-[20px] font-sans font-medium text-white/90 leading-none">{getStageTitle(getCrystalStage())}</h3>
             </div>
-            <span className="text-[11px] font-mono text-white/40 bg-white/10 px-2.5 py-1 rounded-full select-none">3D модель</span>
           </div>
 
           {/* Interactive touch crystal cage */}
@@ -463,6 +466,16 @@ export default function ProgressView({
             <span className="text-[28px] font-display font-semibold text-white/95 leading-none">{stats.daysStreak}</span>
             <span className="text-[11px] text-white/40 font-sans mt-2 leading-none">серия</span>
           </div>
+        </div>
+      </div>
+
+      {/* Block 2.5: GitHub-style practice heatmap */}
+      <div className="flex flex-col space-y-3" id="block_practice_heatmap">
+        <span className="text-white/40 text-[13px] font-sans font-semibold tracking-wider uppercase px-2">
+          Карта практик
+        </span>
+        <div className="bg-slate-950/30 border border-white/[0.08] backdrop-blur-3xl rounded-[32px] p-5 relative overflow-hidden shadow-xl">
+          <PracticeHeatmap practiceLogs={practiceLogs} onClick={onOpenHeatmap} />
         </div>
       </div>
 

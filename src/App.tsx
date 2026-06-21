@@ -46,6 +46,7 @@ import NavigatorModal from './components/NavigatorModal';
 import SubscriptionPlus from './components/SubscriptionPlus';
 import RingCustomizer from './components/RingCustomizer';
 import Onboarding from './components/Onboarding';
+import PracticeHistoryModal from './components/PracticeHistoryModal';
 import HealthDetailsModal from './components/HealthDetailsModal';
 
 export default function App() {
@@ -183,7 +184,9 @@ export default function App() {
   const [showSubscription, setShowSubscription] = useState(false);
   const [showRingConfigurator, setShowRingConfigurator] = useState(false);
   const [showHealthDetail, setShowHealthDetail] = useState(false);
+  const [showHeatmapModal, setShowHeatmapModal] = useState(false);
   const [activeReadingTopic, setActiveReadingTopic] = useState<any>(null);
+  const [childModalOpen, setChildModalOpen] = useState(false);
 
   // Active exercises states
   const [activePractice, setActivePractice] = useState<Practice | null>(null);
@@ -212,12 +215,16 @@ export default function App() {
   // 4. "Свечение" soundscape horizontal player states
   const [ambientTrackIndex, setAmbientTrackIndex] = useState(0);
   const [ambientIsPlaying, setAmbientIsPlaying] = useState(false);
+  const [fallbackTimer, setFallbackTimer] = useState(0);
 
   // History track log
-  const [workoutLogs, setWorkoutLogs] = useState<ActivityLog[]>([
-    { id: '1', type: 'audio', date: 'Вчера', durationMinutes: 7, selectedState: 'Balance' },
-    { id: '2', type: 'breathing', date: '2 дня назад', durationMinutes: 5, selectedState: 'Shining' }
-  ]);
+  const [workoutLogs, setWorkoutLogs] = useState<ActivityLog[]>(() => {
+    const saved = localStorage.getItem('ritual_workout_logs');
+    if (saved) {
+      try { return JSON.parse(saved); } catch {}
+    }
+    return [];
+  });
 
   // Handle active status block click haptic updates from Today
   useEffect(() => {
@@ -229,7 +236,8 @@ export default function App() {
     localStorage.setItem('ritual_achievements', JSON.stringify(achievements));
     localStorage.setItem('ritual_health_score', JSON.stringify(healthScore));
     localStorage.setItem('ritual_health_state', healthState);
-  }, [isOnboarded, userName, isPlus, ringConnected, favorites, achievements, healthScore, healthState]);
+    localStorage.setItem('ritual_workout_logs', JSON.stringify(workoutLogs));
+  }, [isOnboarded, userName, isPlus, ringConnected, favorites, achievements, healthScore, healthState, workoutLogs]);
 
   // Synchronise window focus for cheating check on Focus (Pomodoro) timer
   useEffect(() => {
@@ -343,6 +351,18 @@ export default function App() {
     return () => clearInterval(interval);
   }, [activePractice, pomodoroIsActive, pomodoroMinutes, pomodoroSeconds]);
 
+  // Fallback timer for Тишина/Энергия/Ясность practices
+  useEffect(() => {
+    let interval: any;
+    if (activePractice && activePractice.group !== 'Исток' && !activePractice.id.startsWith('uniq')) {
+      setFallbackTimer(0);
+      interval = setInterval(() => {
+        setFallbackTimer(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [activePractice]);
+
   // Mindful Movement dynamic simulation timers
   useEffect(() => {
     let interval: any;
@@ -406,14 +426,16 @@ export default function App() {
     });
 
     // append to workout logs
+    const now = new Date();
     const newLog: ActivityLog = {
       id: Date.now().toString(),
       type: activePractice?.id === 'uniq-movement' ? 'walk' : 'audio',
-      date: 'Только что',
+      date: now.toISOString(),
       durationMinutes: activePractice?.id === 'uniq-movement' ? Math.floor(movementTimer / 60) || 1 : 5,
       distanceKm: activePractice?.id === 'uniq-movement' ? movementDistance : undefined,
       selectedState: healthState,
-      cheated: userCheated
+      cheated: userCheated,
+      practiceName: activePractice?.name || title
     };
     setWorkoutLogs([newLog, ...workoutLogs]);
 
@@ -563,6 +585,7 @@ export default function App() {
                 onStartPractice={handleStartPracticeSelect}
                 onOpenPlus={() => setShowSubscription(true)}
                 currentLevel={stats.ritualsCompleted + 1}
+                onModalOpenChange={setChildModalOpen}
               />
             </motion.div>
           )}
@@ -582,6 +605,8 @@ export default function App() {
                 onOpenPlus={() => setShowSubscription(true)}
                 onOpenStore={handleOpenStores}
                 onOpenArticle={(art) => setActiveReadingTopic(art)}
+                practiceLogs={workoutLogs}
+                onOpenHeatmap={() => setShowHeatmapModal(true)}
               />
             </motion.div>
           )}
@@ -1120,120 +1145,95 @@ export default function App() {
 
               {/* Scenario 4: "Свечение" Horizontal audio visualizer */}
               {activePractice.id === 'uniq-glow' && (
-                <div className="flex flex-col space-y-5 w-full p-4 relative h-[420px] justify-between">
-                  {/* Top info and switcher */}
+                <div className="flex flex-col items-center space-y-4 w-full px-2">
+                  {/* Top info */}
                   <div className="flex flex-col space-y-1 text-center select-none">
                     <span className="text-[10px] text-[#fbbf24]/60 font-mono tracking-widest uppercase">Медитация Свечения & Звука</span>
                     <h3 className="text-xl font-bold text-white tracking-wide">{SOUNDSCAPES[ambientTrackIndex].name}</h3>
                   </div>
 
-                  {/* Pulsing glow candle / neon visualizer portal */}
-                  <div className="flex-1 w-full flex flex-col items-center justify-center relative my-3">
-                    {/* Color Aura Glow behind */}
+                  {/* Pulsing glow aura (always animates to avoid layout shift) */}
+                  <div className="relative w-40 h-40 flex items-center justify-center">
                     <motion.div 
                       key={ambientTrackIndex + '-aura'}
-                      animate={ambientIsPlaying ? { 
-                        scale: [1, 1.35, 1],
-                        opacity: [0.25, 0.65, 0.25]
-                      } : {
-                        scale: 1,
-                        opacity: 0.25
-                      }}
+                      animate={{ scale: [1, 1.25, 1], opacity: [0.2, 0.5, 0.2] }}
                       transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-                      className={`w-64 h-64 rounded-full blur-3xl absolute pointer-events-none transition-colors duration-1000 ${
+                      className={`absolute inset-0 rounded-full blur-3xl pointer-events-none ${
                         ambientTrackIndex === 0 ? 'bg-amber-500/30' :
                         ambientTrackIndex === 1 ? 'bg-purple-500/30' :
                         ambientTrackIndex === 2 ? 'bg-emerald-500/30' :
                         'bg-sky-500/30'
                       }`}
                     />
-
-                    {/* Interactive Candle / Portal Center */}
-                    <div className="relative w-32 h-32 flex items-center justify-center">
+                    <div className="relative w-28 h-28 flex items-center justify-center">
                       {ambientTrackIndex === 0 ? (
                         <div className="relative flex flex-col items-center">
-                          {/* Candle Flame shape animation */}
                           <motion.div
-                            animate={ambientIsPlaying ? {
-                              scaleY: [1, 1.15, 0.95, 1.1, 1],
-                              scaleX: [1, 0.95, 1.1, 0.9, 1],
-                              skewX: [-2, 2, -1, 3, -1],
-                            } : {}}
-                            transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
-                            className="w-10 h-16 bg-gradient-to-t from-orange-600 via-amber-400 to-amber-100 rounded-t-full shadow-[0_0_24px_rgba(245,158,11,0.6)] relative z-10"
+                            animate={{ scaleY: [1, 1.1, 0.95, 1.05, 1], scaleX: [1, 0.97, 1.05, 0.95, 1] }}
+                            transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                            className="w-8 h-14 bg-gradient-to-t from-orange-600 via-amber-400 to-amber-100 rounded-t-full shadow-[0_0_20px_rgba(245,158,11,0.5)] z-10"
                             style={{ borderRadius: "50% 50% 20% 20% / 60% 60% 40% 40%" }}
                           />
-                          {/* Candle base wood/pillar mockup */}
-                          <div className="w-10 h-14 bg-gradient-to-r from-stone-800 to-stone-700/80 rounded-b-xl border-t border-amber-500/20 shadow-md flex items-center justify-center">
-                            <span className="text-[8px] font-mono text-white/20 uppercase tracking-widest">ЗЕН</span>
+                          <div className="w-8 h-12 bg-gradient-to-r from-stone-800 to-stone-700/80 rounded-b-xl border-t border-amber-500/20 flex items-center justify-center">
+                            <span className="text-[7px] font-mono text-white/20 uppercase">ЗЕН</span>
                           </div>
-                          {/* Flame wick line */}
-                          <div className="absolute top-[52px] w-0.5 h-3 bg-stone-950 rounded-t-full z-10" />
+                          <div className="absolute top-[46px] w-0.5 h-2.5 bg-stone-950 rounded-t-full z-10" />
                         </div>
                       ) : (
-                        /* Neon portal orb with Volume2 icon pulsing */
                         <motion.div
-                          animate={ambientIsPlaying ? {
-                            scale: [1, 1.12, 0.96, 1],
-                            rotate: 360
-                          } : {}}
-                          transition={ambientIsPlaying ? { repeat: Infinity, duration: 8, ease: "linear" } : {}}
-                          className={`w-24 h-24 rounded-full border border-white/20 bg-gradient-to-tr flex items-center justify-center shadow-2xl relative transition-all duration-700 ${
-                            ambientTrackIndex === 1 ? 'from-purple-600/30 via-pink-500/20 to-violet-900/60 shadow-purple-500/20' :
-                            ambientTrackIndex === 2 ? 'from-emerald-600/30 via-teal-500/20 to-cyan-900/60 shadow-emerald-500/30' :
-                            'from-sky-600/30 via-blue-500/20 to-indigo-900/60 shadow-sky-500/20'
+                          animate={{ scale: [1, 1.1, 0.97, 1], rotate: [0, 360] }}
+                          transition={{ repeat: Infinity, duration: 10, ease: "linear" }}
+                          className={`w-20 h-20 rounded-full border border-white/20 bg-gradient-to-tr flex items-center justify-center shadow-2xl ${
+                            ambientTrackIndex === 1 ? 'from-purple-600/30 via-pink-500/20 to-violet-900/60' :
+                            ambientTrackIndex === 2 ? 'from-emerald-600/30 via-teal-500/20 to-cyan-900/60' :
+                            'from-sky-600/30 via-blue-500/20 to-indigo-900/60'
                           }`}
                         >
-                          <Volume2 className={`w-8 h-8 text-white ${ambientIsPlaying ? 'animate-pulse' : 'opacity-40'}`} />
+                          <Volume2 className="w-6 h-6 text-white/80" />
                         </motion.div>
                       )}
                     </div>
                   </div>
 
-                  {/* Sound Wave visual frequency analyzer bars */}
-                  <div className="flex items-end justify-center space-x-1.5 h-12 w-full select-none">
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].map((i) => (
-                      <motion.div
-                        key={i}
-                        animate={ambientIsPlaying ? {
-                          height: [12, Math.random() * 32 + 10, 12]
-                        } : {
-                          height: 6
-                        }}
-                        transition={{
-                          repeat: Infinity,
-                          duration: 0.5 + i * 0.05,
-                          ease: "easeInOut"
-                        }}
-                        className={`w-1 rounded-full transition-colors duration-1000 ${
-                          ambientTrackIndex === 0 ? 'bg-amber-400' :
-                          ambientTrackIndex === 1 ? 'bg-purple-400' :
-                          ambientTrackIndex === 2 ? 'bg-emerald-400' :
-                          'bg-sky-400'
-                        }`}
-                      />
-                    ))}
+                  {/* Sound bars with deterministic heights (no Math.random) */}
+                  <div className="flex items-end justify-center space-x-1 h-10 w-full max-w-[260px]">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].map((i) => {
+                      const base = i % 2 === 0 ? 16 : 10;
+                      return (
+                        <motion.div
+                          key={i}
+                          animate={{ height: [base, base + (i % 3) * 8 + 6, base] }}
+                          transition={{
+                            repeat: Infinity,
+                            duration: 0.6 + (i % 4) * 0.15,
+                            ease: "easeInOut",
+                            delay: (i % 5) * 0.08
+                          }}
+                          className={`w-1 rounded-full ${
+                            ambientTrackIndex === 0 ? 'bg-amber-400/70' :
+                            ambientTrackIndex === 1 ? 'bg-purple-400/70' :
+                            ambientTrackIndex === 2 ? 'bg-emerald-400/70' :
+                            'bg-sky-400/70'
+                          }`}
+                        />
+                      );
+                    })}
                   </div>
 
-                  <p className="text-[11px] text-center text-white/50 px-4 font-sans select-none pointer-events-none">
+                  <p className="text-[11px] text-center text-white/50 px-4 font-sans select-none">
                     {SOUNDSCAPES[ambientTrackIndex].desc}
                   </p>
 
-                  {/* Horizont tabs slider to switch tracks */}
-                  <div className="flex space-x-2 overflow-x-auto pb-1 scrollbar-none py-2 px-1 select-none z-10">
+                  {/* Track tabs */}
+                  <div className="flex flex-wrap justify-center gap-2">
                     {SOUNDSCAPES.map((t, idx) => (
                       <button 
                         key={idx}
-                        onClick={() => {
-                          setAmbientTrackIndex(idx);
-                        }}
-                        className={`shrink-0 px-3.5 py-2 rounded-2xl text-[10.5px] font-mono transition-all duration-300 ${
-                          ambientTrackIndex === idx ? (
-                            ambientTrackIndex === 0 ? 'bg-amber-400 text-black font-semibold' :
-                            ambientTrackIndex === 1 ? 'bg-purple-400 text-black font-semibold' :
-                            ambientTrackIndex === 2 ? 'bg-emerald-400 text-black font-semibold' :
-                            'bg-sky-400 text-black font-semibold'
-                          ) : 'bg-white/5 text-white/40'
+                        onClick={() => { setAmbientTrackIndex(idx); }}
+                        className={`shrink-0 px-3 py-1.5 rounded-2xl text-[10.5px] font-mono transition-colors ${
+                          ambientTrackIndex === idx
+                            ? 'bg-white text-black font-semibold'
+                            : 'bg-white/5 text-white/40'
                         }`}
                       >
                         {t.name}
@@ -1243,10 +1243,76 @@ export default function App() {
 
                   <button 
                     onClick={() => setAmbientIsPlaying(!ambientIsPlaying)}
-                    className="w-full py-3.5 rounded-2xl bg-white text-black font-bold text-xs active:scale-95 transition"
+                    className="w-full py-3 rounded-2xl bg-white text-black font-semibold text-xs active:scale-95 transition"
                   >
                     {ambientIsPlaying ? 'Поставить на паузу' : 'Запустить воспроизведение'}
                   </button>
+                </div>
+              )}
+
+              {/* Fallback: Тишина / Энергия / Ясность — spectrogram + practice info */}
+              {activePractice.group !== 'Исток' && !activePractice.id.startsWith('uniq') && (
+                <div className="flex flex-col items-center text-center space-y-8 w-full p-4">
+                  <div className="relative w-64 h-64 flex items-center justify-center">
+                    <motion.div
+                      animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.5, 0.2] }}
+                      transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
+                      className={`w-48 h-48 rounded-full blur-3xl absolute pointer-events-none ${
+                        activePractice.group === 'Тишина' ? 'bg-[#7A9BBA]/20' :
+                        activePractice.group === 'Энергия' ? 'bg-[#E67E22]/20' :
+                        'bg-[#A8D5E5]/20'
+                      }`}
+                    />
+                    <motion.div
+                      animate={{ scale: [1, 1.08, 1] }}
+                      transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+                      className={`w-36 h-36 rounded-full border-2 flex items-center justify-center ${
+                        activePractice.group === 'Тишина' ? 'border-[#7A9BBA]/30' :
+                        activePractice.group === 'Энергия' ? 'border-[#E67E22]/30' :
+                        'border-[#A8D5E5]/30'
+                      }`}
+                    >
+                      <span className="text-4xl font-bold font-mono text-white/80">
+                        {String(Math.floor(fallbackTimer / 60)).padStart(2, '0')}:{String(fallbackTimer % 60).padStart(2, '0')}
+                      </span>
+                    </motion.div>
+                  </div>
+                  <div className="flex flex-col space-y-3 max-w-[280px]">
+                    <h3 className="text-[20px] font-display font-medium text-white/95">{activePractice.name}</h3>
+                    <p className="text-xs text-white/50 leading-relaxed font-sans">
+                      {activePractice.howItWorks || activePractice.scientificBase || `Практика группы «${activePractice.group}»`}
+                    </p>
+                    <div className="flex flex-wrap justify-center gap-2 mt-1">
+                      <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-white/5 text-white/40 border border-white/5">
+                        {activePractice.category}
+                      </span>
+                      <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-white/5 text-white/40 border border-white/5">
+                        {activePractice.duration}
+                      </span>
+                    </div>
+                  </div>
+                  {/* Spectrogram bars */}
+                  <div className="flex items-end justify-center space-x-1.5 h-16 w-full max-w-xs">
+                    {Array.from({ length: 20 }).map((_, i) => (
+                      <motion.div
+                        key={i}
+                        animate={{
+                          height: [8, Math.random() * 40 + 8, 8]
+                        }}
+                        transition={{
+                          repeat: Infinity,
+                          duration: 0.6 + i * 0.08,
+                          ease: "easeInOut",
+                          delay: i * 0.12
+                        }}
+                        className={`w-1 rounded-full ${
+                          activePractice.group === 'Тишина' ? 'bg-[#7A9BBA]/50' :
+                          activePractice.group === 'Энергия' ? 'bg-[#E67E22]/50' :
+                          'bg-[#A8D5E5]/50'
+                        }`}
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -1272,6 +1338,11 @@ export default function App() {
         onClose={() => setShowHealthDetail(false)}
         healthScore={healthScore}
         healthData={realHealthData}
+      />
+      <PracticeHistoryModal
+        isOpen={showHeatmapModal}
+        onClose={() => setShowHeatmapModal(false)}
+        practiceLogs={workoutLogs}
       />
 
       {/* Global Useful Reading Bottom Sheet Article Reader */}
@@ -1314,7 +1385,9 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <BottomTabBar activeTab={activeTab} onMicPress={() => setShowNavigator(true)} />
+      {!activePractice && !showHealthDetail && !showNavigator && !showSubscription && !showRingConfigurator && !activeReadingTopic && !childModalOpen && !showHeatmapModal && (
+        <BottomTabBar activeTab={activeTab} onMicPress={() => setShowNavigator(true)} />
+      )}
 
       {/* Floating Modals Connections */}
       <NavigatorModal 
