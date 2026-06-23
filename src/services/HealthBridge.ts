@@ -1,10 +1,5 @@
 import { HealthData } from './HealthService';
 
-/**
- * HealthBridge — работает только на нативных устройствах.
- * Использует cordova-plugin-health для доступа к Health API.
- * В браузере initialize() вернёт false.
- */
 class HealthBridge {
   private isNative: boolean;
   private healthPlugin: any = null;
@@ -22,6 +17,7 @@ class HealthBridge {
     const getPlugin = () =>
       (window as any).health ||
       (window as any).cordova?.plugins?.health ||
+      (window as any).Capacitor?.nativeBridge?.plugins?.health ||
       null;
 
     return new Promise((resolve) => {
@@ -29,6 +25,10 @@ class HealthBridge {
         const plugin = getPlugin();
         if (plugin) {
           this.healthPlugin = plugin;
+          console.log('[HealthBridge] Plugin found via:', 
+            (window as any).health ? 'window.health' :
+            (window as any).cordova?.plugins?.health ? 'cordova.plugins.health' :
+            'Capacitor bridge');
           resolve(true);
         } else {
           setTimeout(check, 200);
@@ -59,6 +59,7 @@ class HealthBridge {
       try {
         this.healthPlugin.isAvailable(
           (available: boolean) => {
+            console.log('[HealthBridge] isAvailable:', available);
             resolve(available);
           },
           () => {
@@ -81,7 +82,7 @@ class HealthBridge {
         {
           read: [
             'steps', 'distance', 'calories', 'heart_rate',
-            'sleep'
+            'sleep', 'heart_rate.variability'
           ],
           write: []
         },
@@ -117,8 +118,16 @@ class HealthBridge {
         try {
           this.healthPlugin.queryAggregated(
             { startDate: startOfDay, endDate: endOfDay, dataType: type },
-            (data: any) => { clearTimeout(timer); resolve(data); },
-            () => { clearTimeout(timer); resolve(null); }
+            (data: any) => {
+              clearTimeout(timer);
+              console.log(`[HealthBridge] Raw ${type}:`, JSON.stringify(data));
+              resolve(data);
+            },
+            () => {
+              clearTimeout(timer);
+              console.warn(`[HealthBridge] Query error for ${type}`);
+              resolve(null);
+            }
           );
         } catch {
           clearTimeout(timer);
@@ -126,21 +135,51 @@ class HealthBridge {
         }
       });
 
-    const [steps, calories, heartRate, sleep, distance] =
+    const querySleep = (): Promise<any> =>
+      new Promise((resolve) => {
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - 7);
+        startOfWeek.setHours(0, 0, 0, 0);
+        const timer = setTimeout(() => {
+          console.warn('[HealthBridge] Sleep query timeout');
+          resolve(null);
+        }, 4000);
+        try {
+          this.healthPlugin.queryAggregated(
+            { startDate: startOfWeek, endDate: endOfDay, dataType: 'sleep' },
+            (data: any) => {
+              clearTimeout(timer);
+              console.log('[HealthBridge] Raw sleep (7d):', JSON.stringify(data));
+              resolve(data);
+            },
+            () => {
+              clearTimeout(timer);
+              resolve(null);
+            }
+          );
+        } catch {
+          clearTimeout(timer);
+          resolve(null);
+        }
+      });
+
+    const [steps, calories, heartRate, sleep, distance, hrv] =
       await Promise.all([
         queryType('steps'),
         queryType('calories'),
         queryType('heart_rate'),
-        queryType('sleep'),
+        querySleep(),
         queryType('distance'),
+        queryType('heart_rate.variability'),
       ]);
 
     console.log('[HealthBridge] Aggregated data:', {
-      steps, calories, heartRate, sleep, distance,
+      steps, calories, heartRate, sleep, distance, hrv,
     });
 
     return this.parseHealthData({
       steps, calories, heart_rate: heartRate, sleep, distance,
+      heart_rate_variability: hrv,
     });
   }
 
@@ -155,7 +194,7 @@ class HealthBridge {
     };
 
     const heartRate = extract(raw.heart_rate) ?? extract(raw.resting_heart_rate) ?? 0;
-    const hrv = 0;
+    const hrv = extract(raw.heart_rate_variability) ?? 0;
     const steps = extract(raw.steps) ?? 0;
     const sleepSec = extract(raw.sleep);
     const sleepHours = sleepSec !== null ? sleepSec / 3600 : 0;
@@ -169,7 +208,51 @@ class HealthBridge {
       stressLevel: this.estimateStressLevel(hrv, heartRate),
       activityCalories: Math.round(extract(raw.calories) ?? 0),
       respiratoryRate: 0,
+      energyLevel: 0,
     };
+  }
+
+  async openHealthConnectSettings(): Promise<void> {
+    if (!this.healthPlugin) {
+      return;
+    }
+    return new Promise((resolve, reject) => {
+      try {
+        this.healthPlugin.openHealthSettings(
+          () => resolve(),
+          (err: any) => reject(err)
+        );
+      } catch {
+        resolve();
+      }
+    });
+  }
+
+  async isSamsungHealthInstalled(): Promise<boolean> {
+    if (!this.isNative) return false;
+    try {
+      const { Capacitor } = (window as any);
+      if (Capacitor?.nativeBridge?.nativePromise) {
+        const result = await Capacitor.nativeBridge.nativePromise(
+          'capacitor',
+          'canOpenUrl',
+          { url: 'shealth://' }
+        );
+        return result?.value === true || result?.canOpen === true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  openSamsungHealth(): void {
+    try {
+      const intent = 'intent://settings#Intent;package=com.sec.android.app.shealth;end';
+      window.open(intent, '_system');
+    } catch {
+      window.open('https://play.google.com/store/apps/details?id=com.sec.android.app.shealth', '_blank');
+    }
   }
 
   private estimateStressLevel(hrv: number, heartRate: number): number {

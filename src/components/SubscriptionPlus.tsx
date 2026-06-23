@@ -48,7 +48,7 @@ export default function SubscriptionPlus({
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 220 }}
-            className="w-full max-w-md bg-[#0e101cf2] border-t border-white/10 rounded-t-[32px] p-6 pb-12 z-50 flex flex-col space-y-5"
+            className="w-full max-w-md bg-[#0e101cf2] border-t border-white/10 rounded-t-[32px] p-6 pb-[max(24px,env(safe-area-inset-bottom,24px))] z-50 flex flex-col space-y-5"
           >
             <div className="flex justify-between items-center">
               <div className="flex items-center space-x-2">

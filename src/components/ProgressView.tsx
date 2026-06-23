@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Trophy, 
@@ -46,7 +46,18 @@ export default function ProgressView({
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [showBadgeModal, setShowBadgeModal] = useState<Achievement | null>(null);
   const [selectedGoalCount, setSelectedGoalCount] = useState(5);
-  const [currentGoalProgress, setCurrentGoalProgress] = useState(3);
+  const currentGoalProgress = useMemo(() => {
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay() + 1);
+    weekStart.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 7);
+    return practiceLogs.filter(log => {
+      const d = new Date(log.date);
+      return d >= weekStart && d < weekEnd;
+    }).length;
+  }, [practiceLogs]);
   
   // Rotating 3D crystal drag state
   const [rotY, setRotY] = useState(0);

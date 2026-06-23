@@ -410,6 +410,46 @@ export default function TodayView({
                   ))}
                 </div>
 
+                {/* Samsung Health sync guidance */}
+                {realHealthData && realHealthData.hrv === 0 && realHealthData.sleepHours === 0 && realHealthData.steps === 0 && realHealthData.heartRate === 0 && (
+                  <div className="w-full bg-amber-500/10 border border-amber-500/20 rounded-2xl p-3.5 mt-3 text-[11px] text-amber-300/90 leading-relaxed space-y-2.5">
+                    <div className="flex items-start space-x-2">
+                      <span className="shrink-0 mt-0.5 text-amber-400">📡</span>
+                      <span className="flex-1">
+                        <strong>Данные не найдены</strong> — разрешения выданы, но Samsung Health не передаёт данные в Health Connect.
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-amber-400/70 pl-6 space-y-1.5">
+                      <p>1️⃣ Откройте <strong>Samsung Health</strong></p>
+                      <p>2️⃣ Нажмите ⋮ или ☰ → <strong>Настройки</strong></p>
+                      <p>3️⃣ <strong>Обмен данными</strong> → <strong>Health Connect</strong></p>
+                      <p>4️⃣ Включите: Шаги, Сон, Пульс</p>
+                    </div>
+                    <div className="flex space-x-2 pt-1">
+                      <button
+                        onClick={() => {
+                          try {
+                            (window as any).healthBridge?.openHealthConnectSettings();
+                          } catch {}
+                        }}
+                        className="flex-1 py-2 rounded-xl bg-amber-500/15 border border-amber-500/20 text-[10px] font-mono text-amber-300 font-semibold hover:bg-amber-500/20 active:scale-[0.97] transition-all"
+                      >
+                        Открыть Health Connect
+                      </button>
+                      <button
+                        onClick={() => {
+                          try {
+                            (window as any).healthBridge?.openSamsungHealth();
+                          } catch {}
+                        }}
+                        className="flex-1 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-mono text-white/70 font-semibold hover:bg-white/10 active:scale-[0.97] transition-all"
+                      >
+                        Открыть Samsung Health
+                      </button>
+                    </div>
+                  </div>
+                )}
+
               </div>
             )}
 

@@ -1,4 +1,51 @@
-import { Practice, Achievement, Article, PathwayLevel } from './types';
+import { Practice, Achievement, Article, PathwayLevel, PracticeImpact } from './types';
+
+export const UNIQUE_PRACTICES: Practice[] = [
+  {
+    id: 'uniq-focus',
+    name: 'Фокус внимания',
+    group: 'Ясность',
+    duration: '25:00',
+    category: 'Фокус и продуктивность',
+    scientificBase: 'Метод Pomodoro, укрепляющий префронтальную кору через циклы концентрации.',
+    howItWorks: 'Работа циклами 25/5 с отслеживанием отвлечений.',
+    result: 'Укрепление внимания и осознанности.',
+    isUnlocked: true
+  },
+  {
+    id: 'uniq-movement',
+    name: 'Осознанное движение',
+    group: 'Энергия',
+    duration: '20:00',
+    category: 'Утро и энергия',
+    scientificBase: 'Синхронизация ритмов мозга и тела через циклические повторяющиеся движения.',
+    howItWorks: 'Ходьба или бег с отслеживанием темпа и внимания.',
+    result: 'Повышение нейропластичности и снижение стресса.',
+    isUnlocked: true
+  },
+  {
+    id: 'uniq-glow',
+    name: 'Медитация свечения',
+    group: 'Тишина',
+    duration: '10:00',
+    category: 'Отдых и пауза',
+    scientificBase: 'Активация парасимпатической системы через звуковые вибрации и визуальное свечение.',
+    howItWorks: 'Выбор звуковой дорожки и созерцание визуального маяка.',
+    result: 'Снижение тревоги, гармонизация состояния.',
+    isUnlocked: true
+  },
+  {
+    id: 'uniq-breath',
+    name: 'Свободное дыхание',
+    group: 'Исток',
+    duration: '05:00',
+    category: 'Снятие стресса',
+    scientificBase: 'Резонансное дыхание для баланса ВСР.',
+    howItWorks: 'Расслабленное наблюдение за естественным ритмом дыхания.',
+    result: 'Мгновенное успокоение нервной системы.',
+    isUnlocked: true
+  }
+];
 
 export const ALL_PRACTICES: Practice[] = [
   // --- ИСТОК ---
@@ -353,6 +400,52 @@ export const EDUCATIONAL_ARTICLES: Article[] = [
     description: 'Бинауральные биения и изохронные тоны в звуке',
     content: `Бинауральные биения работают через стереонаушники, создавая разницу частот в левом и правом наушнике (например, 200 Гц и 206 Гц). Мозг улавливает разницу в 6 Гц (тета) и успокаивается.
 Изохронные тоны — это ритмичные импульсы, помогающие войти в баланс альфа-частот без наушников. Низкочастотный гул (ниже 100 Гц) физически стимулирует блуждающий нерв, снижая кортизол.`
+  }
+];
+
+export const MOCK_PRACTICE_IMPACTS: PracticeImpact[] = [
+  {
+    ritualId: 'physio-sigh',
+    ritualTitle: 'Физиологический вздох',
+    group: 'Исток',
+    date: new Date(Date.now() - 2 * 3600000).toISOString(),
+    effects: [
+      { metric: 'hrv', label: 'ВСР +12%', change: 12 },
+      { metric: 'stressLevel', label: 'Стресс -18%', change: -18 },
+      { metric: 'heartRate', label: 'Пульс -5 уд/мин', change: -5 }
+    ]
+  },
+  {
+    ritualId: 'night-diary',
+    ritualTitle: 'Ночной дневник',
+    group: 'Тишина',
+    date: new Date(Date.now() - 14 * 3600000).toISOString(),
+    effects: [
+      { metric: 'sleepHours', label: 'Сон +0.8ч', change: 8 },
+      { metric: 'sleepQuality', label: 'Качество сна +15%', change: 15 },
+      { metric: 'hrv', label: 'ВСР +8%', change: 8 }
+    ]
+  },
+  {
+    ritualId: 'day-code',
+    ritualTitle: 'Код дня',
+    group: 'Энергия',
+    date: new Date(Date.now() - 26 * 3600000).toISOString(),
+    effects: [
+      { metric: 'energyLevel', label: 'Энергия +22%', change: 22 },
+      { metric: 'activityCalories', label: 'Активность +180 ккал', change: 18 },
+    ]
+  },
+  {
+    ritualId: 'goal-map',
+    ritualTitle: 'Карта целей',
+    group: 'Ясность',
+    date: new Date(Date.now() - 50 * 3600000).toISOString(),
+    effects: [
+      { metric: 'stressLevel', label: 'Стресс -12%', change: -12 },
+      { metric: 'heartRate', label: 'Пульс -3 уд/мин', change: -3 },
+      { metric: 'hrv', label: 'ВСР +5%', change: 5 }
+    ]
   }
 ];
 

@@ -49,6 +49,15 @@ export interface ActivityLog {
   avgPace?: string;
   selectedState?: HealthState;
   cheated?: boolean;
+  practiceName?: string;
+}
+
+export interface EmotionPreset {
+  id: string;
+  label: string;
+  description: string;
+  practiceId: string;
+  healthState: HealthState;
 }
 
 export interface NavigatorRecomendation {
@@ -70,5 +79,90 @@ export interface PathwayLevel {
   duration: string;
   group: PracticeGroupType;
   overallIndex: number; // 0 to 20
+}
+
+export interface MetricEffect {
+  metric: string;
+  label: string;
+  change: number;
+}
+
+export interface PracticeImpact {
+  ritualId: string;
+  ritualTitle: string;
+  group: string;
+  date: string;
+  effects: MetricEffect[];
+}
+
+// ===== Типы для скриптов ритуалов (из документа RITUAL) =====
+
+export type PhaseType = 'пролог' | 'вступление' | 'практика' | 'микро_чек' | 'инсайт' | 'ключевая_фраза' | 'задание' | 'закрытие';
+
+export interface VoiceInstruction {
+  text: string;
+  tone?: 'мягкий' | 'уверенный' | 'глубокий' | 'нейтральный' | 'энергичный' | 'шёпот';
+  tempo?: 'медленный' | 'средний' | 'быстрый';
+}
+
+export interface MusicLayer {
+  padFreq?: number;
+  instrument?: string;
+  volume?: number;
+  binauralBeat?: { left: number; right: number };
+  isochronicTone?: number;
+}
+
+export interface HapticSpec {
+  pattern: 'continuous' | 'pulse' | 'wave' | 'chime' | 'none';
+  intensity: number;
+  frequency?: number;
+}
+
+export interface RingTriggerCondition {
+  metric: 'hrv' | 'heartRate' | 'stressLevel' | 'kgr' | 'sleepDuration';
+  operator: 'lt' | 'gt' | 'between';
+  value: number | [number, number];
+}
+
+export interface RingTrigger {
+  type: 'hard' | 'soft';
+  condition: RingTriggerCondition;
+  hapticPattern: 'calm_pulse' | 'tense_tap' | 'overload_silent' | 'completion_chime';
+}
+
+export interface ScriptSegment {
+  phase: PhaseType;
+  from: number;
+  to: number;
+  voice?: VoiceInstruction;
+  music?: MusicLayer;
+  haptic?: HapticSpec;
+  ringTrigger?: RingTrigger;
+}
+
+export interface HealthImpact {
+  metric: string;
+  expectedChange: number;
+  confidence: 'high' | 'medium' | 'low';
+}
+
+export interface PostRitualLink {
+  ritualId: string;
+  group: PracticeGroupType;
+  reason: string;
+}
+
+export interface RitualScript {
+  ritualId: string;
+  group: PracticeGroupType;
+  title: string;
+  durationSeconds: number;
+  category: string;
+  scientificBase: string;
+  howItWorks: string;
+  segments: ScriptSegment[];
+  expectedImpacts: HealthImpact[];
+  postLinks: PostRitualLink[];
 }
 

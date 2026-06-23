@@ -35,7 +35,9 @@ import {
 } from 'lucide-react';
 import { HealthState, Practice, ActivityLog, UserStats, Achievement } from './types';
 import { ALL_PRACTICES, INITIAL_ACHIEVEMENTS } from './data';
-import { healthService } from './services';
+import { healthService, healthBridge } from './services';
+// Expose for HealthBridge UI buttons in TodayView
+(window as any).healthBridge = healthBridge;
 import type { HealthData } from './services/HealthService';
 
 // Component imports
@@ -1394,6 +1396,7 @@ export default function App() {
         isOpen={showNavigator}
         onClose={() => setShowNavigator(false)}
         onApplyRecommendation={handleApplyAIRecommendation}
+        onStartPractice={handleStartPracticeSelect}
       />
 
       <SubscriptionPlus 

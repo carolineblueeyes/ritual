@@ -10,6 +10,7 @@ export interface HealthData {
   stressLevel: number;
   activityCalories: number;
   respiratoryRate: number;
+  energyLevel: number;
 }
 
 export type HealthPlatform = 'apple' | 'google' | 'simulator';
@@ -42,6 +43,7 @@ class HealthSimulator implements IHealthService {
       stressLevel: this.randomBetween(20, 70),
       activityCalories: this.randomBetween(150, 600),
       respiratoryRate: this.randomBetween(12, 18),
+      energyLevel: this.randomBetween(40, 95),
     };
   }
 

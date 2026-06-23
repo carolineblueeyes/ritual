@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
+import {
   Bookmark, 
   Search, 
   Activity, 
@@ -19,10 +19,14 @@ import {
   Lock,
   Check,
   Play,
-  PlayCircle
+  PlayCircle,
+  Wind,
+  Brain,
+  Sunrise,
+  Footprints
 } from 'lucide-react';
 import { Practice, PracticeGroupType, PathwayLevel } from '../types';
-import { ALL_PRACTICES, PATHWAY_LEVELS } from '../data';
+import { ALL_PRACTICES, UNIQUE_PRACTICES, PATHWAY_LEVELS } from '../data';
 
 interface PracticesViewProps {
   isPlus: boolean;
@@ -31,6 +35,7 @@ interface PracticesViewProps {
   onStartPractice: (practice: Practice) => void;
   onOpenPlus: () => void;
   currentLevel: number;
+  onModalOpenChange?: (open: boolean) => void;
 }
 
 export default function PracticesView({
@@ -39,13 +44,19 @@ export default function PracticesView({
   onToggleFavorite,
   onStartPractice,
   onOpenPlus,
-  currentLevel
+  currentLevel,
+  onModalOpenChange
 }: PracticesViewProps) {
   const [selectedGroup, setSelectedGroup] = useState<PracticeGroupType | 'Все'>('Все');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFavSheet, setShowFavSheet] = useState(false);
   const [showPathwayModal, setShowPathwayModal] = useState(false);
   const [selectedChapter, setSelectedChapter] = useState<number | null>(null);
+
+  // Notify parent when any modal opens/closes
+  useEffect(() => {
+    onModalOpenChange?.(showFavSheet || showPathwayModal);
+  }, [showFavSheet, showPathwayModal]);
   const [expandedChapters, setExpandedChapters] = useState<Record<number, boolean>>({ 1: true });
 
   // Group metadata representing different chapters
@@ -83,9 +94,8 @@ export default function PracticesView({
       {/* Top Header Row with airy bookmark toggle */}
       <div className="flex justify-between items-center w-full px-2" id="practices_header">
         <div className="flex flex-col">
-          <span className="text-[10px] uppercase tracking-widest font-mono text-white/30">Медиатека</span>
           <h2 className="text-[28px] font-display font-medium tracking-tight text-white/95 leading-none">
-            Библиотека
+            Архив сознания
           </h2>
         </div>
 
@@ -163,6 +173,40 @@ export default function PracticesView({
                 }`}
               >
                 <span>{value.label}</span>
+              </motion.button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Block 2.5: Unique Rituals shortcut cluster */}
+      <div className="w-full flex flex-col space-y-3.5" id="block_unique_rituals">
+        <span className="text-white/40 text-[13px] font-sans font-semibold tracking-wider uppercase px-2">
+          Уникальные ритуалы
+        </span>
+
+        <div className="grid grid-cols-2 gap-2.5">
+          {UNIQUE_PRACTICES.map((u) => {
+            const iconMap: Record<string, React.ReactNode> = {
+              'uniq-focus': <Brain className="w-4.5 h-4.5 text-[#A8D5E5]" />,
+              'uniq-movement': <Footprints className="w-4.5 h-4.5 text-[#E67E22]" />,
+              'uniq-glow': <Sunrise className="w-4.5 h-4.5 text-[#7A9BBA]" />,
+              'uniq-breath': <Wind className="w-4.5 h-4.5 text-[#E6B85C]" />
+            };
+            return (
+              <motion.button
+                key={u.id}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => onStartPractice(u)}
+                className="p-3.5 rounded-[22px] bg-slate-950/20 border border-white/[0.05] flex items-center space-x-3 text-left cursor-pointer hover:bg-white/[0.04] active:scale-95 transition-all shadow-md"
+              >
+                <div className="w-9 h-9 rounded-[12px] bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                  {iconMap[u.id]}
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-white/90 text-[13px] font-semibold leading-tight">{u.name}</span>
+                  <span className="text-[10px] text-white/30 font-mono">{u.duration}</span>
+                </div>
               </motion.button>
             );
           })}
@@ -256,12 +300,12 @@ export default function PracticesView({
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 220 }}
-              className="w-full max-w-md bg-[#090b14ef] border-t border-white/[0.12] rounded-t-[36px] p-6 pb-12 z-10 flex flex-col space-y-4 max-h-[85vh] overflow-y-auto scrollbar-none shadow-2xl"
+              className="w-full max-w-md bg-[#090b14ef] border-t border-white/[0.12] rounded-t-[36px] p-6 pb-[max(24px,env(safe-area-inset-bottom,24px))] z-50 flex flex-col space-y-4 max-h-[85vh] overflow-y-auto scrollbar-none shadow-2xl"
             >
               <div className="flex justify-between items-center border-b border-white/10 pb-4">
                 <div className="flex flex-col">
-                  <span className="text-[10px] uppercase tracking-widest font-mono text-[#E6B85C]">Избранные сеансы</span>
-                  <h3 className="text-xl font-bold text-white/95">Моя полоса содействия</h3>
+                  <span className="text-[10px] uppercase tracking-widest font-mono text-[#E6B85C]">Избранное</span>
+                  <h3 className="text-xl font-bold text-white/95">Мои сеансы</h3>
                 </div>
                 <button 
                   onClick={() => setShowFavSheet(false)}
@@ -326,7 +370,7 @@ export default function PracticesView({
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 200 }}
-              className="w-full max-w-sm bg-[#090b14ef] border-t border-white/[0.12] rounded-t-[36px] p-6 pb-12 z-10 flex flex-col space-y-4 max-h-[85vh] overflow-y-auto scrollbar-none shadow-2xl"
+              className="w-full max-w-sm bg-[#090b14ef] border-t border-white/[0.12] rounded-t-[36px] p-6 pb-[max(24px,env(safe-area-inset-bottom,24px))] z-50 flex flex-col space-y-4 max-h-[85vh] overflow-y-auto scrollbar-none shadow-2xl"
             >
               <div className="flex justify-between items-center border-b border-white/10 pb-4">
                 <div className="flex flex-col text-left">
