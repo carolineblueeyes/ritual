@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ritual App - Design Mockup</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+            background: #e8e6e3;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .screens-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(410px, 1fr));
+            gap: 40px;
+            max-width: 2200px;
+            margin: 0 auto;
+        }
+
+        .phone {
+            width: 390px;
+            height: 844px;
+            border: 12px solid #1a1a1a;
+            border-radius: 60px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            background: #f8f6f3;
+            position: relative;
+        }
+
+        .phone::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150px;
+            height: 28px;
+            background: #1a1a1a;
+            border-radius: 0 0 30px 30px;
+            z-index: 100;
+        }
+
+        .screen {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .status-bar {
+            height: 44px;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            color: #2d2520;
+            font-weight: 500;
+            background: #f8f6f3;
+        }
+
+        .status-time {
+            flex: 1;
+        }
+
+        .status-icons {
+            display: flex;
+            gap: 4px;
+        }
+
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+            scrollbar-width: none;
+        }
+
+        .content::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab-bar {
+            height: 70px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            border-top: 1px solid rgba(45, 37, 32, 0.08);
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            gap: 8px;
+            padding: 8px;
+            margin: 0 12px 12px 12px;
+            border-radius: 20px;
+        }
+
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 12px;
+            border-radius: 16px;
+            color: #8b8680;
+            font-size: 10px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab-item.active {
+            background: rgba(201, 169, 110, 0.15);
+            color: #c9a96e;
+        }
+
+        .tab-icon {
+            font-size: 22px;
+        }
+
+        /* ONBOARDING SCREEN */
+        .onboarding {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 40px 20px 60px;
+        }
+
+        .gradient-circle {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #c9a96e 0%, #e8b4d4 100%);
+            box-shadow: 0 10px 40px rgba(201, 169, 110, 0.2);
+            margin-top: 20px;
+            margin-bottom: 30px;
+        }
+
+        .onboarding-title {
+            font-size: 48px;
+            font-weight: 300;
+            letter-spacing: -1px;
+            color: #2d2520;
+            margin-bottom: 12px;
+            text-align: center;
+            font-family: 'Georgia', 'Playfair Display', serif;
+        }
+
+        .onboarding-subtitle {
+            font-size: 16px;
+            color: #8b8680;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .onboarding-desc {
+            font-size: 14px;
+            color: #8b8680;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .button {
+            width: 100%;
+            height: 56px;
+            border-radius: 16px;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 12px;
+        }
+
+        .button-primary {
+            background: #c9a96e;
+            color: white;
+        }
+
+        .button-primary:hover {
+            background: #b8985f;
+            box-shadow: 0 8px 24px rgba(201, 169, 110, 0.3);
+        }
+
+        .button-secondary {
+            background: transparent;
+            color: #c9a96e;
+            border: 2px solid #c9a96e;
+        }
+
+        .button-secondary:hover {
+            background: rgba(201, 169, 110, 0.1);
+        }
+
+        /* TODAY SCREEN */
+        .today {
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .today-header {
+            font-size: 32px;
+            font-weight: 300;
+            color: #2d2520;
+            margin-bottom: 24px;
+            font-family: 'Georgia', 'Playfair Display', serif;
+        }
+
+        .health-score {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, rgba(201, 169, 110, 0.15) 0%, rgba(168, 184, 212, 0.15) 100%);
+            border-radius: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 24px;
+            position: relative;
+            border: 1px solid rgba(201, 169, 110, 0.2);
+        }
+
+        .health-score-number {
+            font-size: 72px;
+            font-weight: 300;
+            color: #c9a96e;
+            line-height: 1;
+        }
+
+        .health-score-status {
+            font-size: 14px;
+            color: #8b8680;
+            margin-top: 8px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .metric-card {
+            background: #f2eff0;
+            border-radius: 16px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            border-left: 4px solid;
+        }
+
+        .metric-card.blue {
+            border-left-color: #888baa;
+        }
+
+        .metric-card.sky {
+            border-left-color: #b8d4e8;
+        }
+
+        .metric-card.pink {
+            border-left-color: #e8b4d4;
+        }
+
+        .metric-card.gold {
+            border-left-color: #c9a96e;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #8b8680;
+            font-weight: 500;
+        }
+
+        .metric-value {
+            font-size: 18px;
+            color: #2d2520;
+            font-weight: 600;
+        }
+
+        .schedule-card {
+            background: linear-gradient(135deg, rgba(201, 169, 110, 0.1) 0%, rgba(201, 169, 110, 0.05) 100%);
+            border-left: 4px solid #c9a96e;
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .schedule-title {
+            font-size: 16px;
+            color: #2d2520;
+            font-weight: 600;
+        }
+
+        .schedule-time {
+            font-size: 14px;
+            color: #8b8680;
+        }
+
+        /* PRACTICE SCREEN */
+        .practice {
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .practice-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .back-button {
+            width: 32px;
+            height: 32px;
+            background: transparent;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #2d2520;
+        }
+
+        .practice-title {
+            font-size: 32px;
+            font-weight: 300;
+            color: #2d2520;
+            font-family: 'Georgia', 'Playfair Display', serif;
+        }
+
+        .category-card {
+            background: linear-gradient(135deg, rgba(107, 163, 197, 0.15) 0%, rgba(184, 212, 232, 0.15) 100%);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(107, 163, 197, 0.2);
+        }
+
+        .category-title {
+            font-size: 18px;
+            color: #2d2520;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .category-desc {
+            font-size: 14px;
+            color: #8b8680;
+        }
+
+        .practice-levels {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .level-card {
+            background: #f2eff0;
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid;
+            position: relative;
+        }
+
+        .level-info h3 {
+            font-size: 16px;
+            color: #2d2520;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .level-info p {
+            font-size: 13px;
+            color: #8b8680;
+        }
+
+        .level-duration {
+            font-size: 12px;
+            color: #8b8680;
+        }
+
+        .premium-badge {
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            background: #c9a96e;
+            color: white;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        /* PROGRESS SCREEN */
+        .progress {
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .progress-header {
+            font-size: 32px;
+            font-weight: 300;
+            color: #2d2520;
+            margin-bottom: 24px;
+            font-family: 'Georgia', 'Playfair Display', serif;
+        }
+
+        .streak-box {
+            background: linear-gradient(135deg, rgba(201, 169, 110, 0.1) 0%, rgba(232, 180, 212, 0.1) 100%);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            margin-bottom: 24px;
+            border: 1px solid rgba(201, 169, 110, 0.2);
+        }
+
+        .streak-icon {
+            font-size: 36px;
+            margin-bottom: 8px;
+        }
+
+        .streak-number {
+            font-size: 42px;
+            font-weight: 300;
+            color: #c9a96e;
+            margin-bottom: 4px;
+        }
+
+        .streak-label {
+            font-size: 12px;
+            color: #8b8680;
+            font-weight: 500;
+        }
+
+        .xp-container {
+            margin-bottom: 24px;
+        }
+
+        .xp-label {
+            font-size: 12px;
+            color: #8b8680;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .xp-bar {
+            width: 100%;
+            height: 8px;
+            background: #f2eff0;
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid rgba(45, 37, 32, 0.08);
+        }
+
+        .xp-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #c9a96e 0%, #b8985f 100%);
+            width: 65%;
+            border-radius: 4px;
+        }
+
+        .achievements {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .achievement-card {
+            background: #f2eff0;
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .achievement-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(201, 169, 110, 0.2);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .achievement-card.locked {
+            opacity: 0.5;
+        }
+
+        .achievement-card.locked .achievement-icon {
+            background: rgba(139, 134, 128, 0.2);
+        }
+
+        .achievement-info h3 {
+            font-size: 14px;
+            color: #2d2520;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .achievement-info p {
+            font-size: 12px;
+            color: #8b8680;
+        }
+
+        /* PROFILE SCREEN */
+        .profile {
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .profile-header {
+            font-size: 32px;
+            font-weight: 300;
+            color: #2d2520;
+            margin-bottom: 24px;
+            font-family: 'Georgia', 'Playfair Display', serif;
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #888baa 0%, #6ba3c5 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 28px;
+            font-weight: 600;
+            margin: 0 auto 16px;
+        }
+
+        .profile-name {
+            font-size: 20px;
+            color: #2d2520;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 4px;
+        }
+
+        .profile-subscription {
+            font-size: 12px;
+            color: #8b8680;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .profile-section {
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #8b8680;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .connections {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .connection-item {
+            background: #f2eff0;
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .connection-icon {
+            font-size: 24px;
+        }
+
+        .connection-label {
+            font-size: 11px;
+            color: #8b8680;
+            font-weight: 500;
+        }
+
+        .toggle {
+            width: 40px;
+            height: 24px;
+            background: #c9a96e;
+            border-radius: 12px;
+            display: inline-block;
+            position: relative;
+        }
+
+        .toggle.off {
+            background: #f2eff0;
+            border: 1px solid #e8e6e3;
+        }
+
+        .themes {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .theme-option {
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 12px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .theme-water {
+            background: linear-gradient(135deg, #6ba3c5 0%, #b8d4e8 100%);
+        }
+
+        .theme-sky {
+            background: linear-gradient(135deg, #b8d4e8 0%, #d4e8f5 100%);
+        }
+
+        .theme-aurora {
+            background: linear-gradient(135deg, #e8b4d4 0%, #f0d4e8 100%);
+        }
+
+        .theme-mystic {
+            background: linear-gradient(135deg, #a8a8d4 0%, #d4d4f0 100%);
+        }
+
+        .theme-option:hover {
+            border-color: #2d2520;
+            box-shadow: 0 4px 12px rgba(45, 37, 32, 0.15);
+        }
+
+        .setting-item {
+            background: #f2eff0;
+            border-radius: 12px;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #2d2520;
+        }
+
+        .setting-value {
+            color: #8b8680;
+            font-size: 13px;
+        }
+
+        .logout-button {
+            background: #ffe8e8;
+            color: #d64a4a;
+            width: 100%;
+            height: 48px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .logout-button:hover {
+            background: #ffd4d4;
+        }
+
+        .screen-title {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: rgba(45, 37, 32, 0.05);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            color: #8b8680;
+            font-weight: 600;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="screens-container">
+        <!-- SCREEN 1: ONBOARDING -->
+        <div class="phone">
+            <div class="status-bar">
+                <span class="status-time">09:41</span>
+                <span class="status-icons">🔋</span>
+            </div>
+            <div class="screen onboarding" style="padding-top: 20px;">
+                <span class="screen-title">Onboarding</span>
+                <div class="gradient-circle"></div>
+                <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                    <h1 class="onboarding-title">Ritual</h1>
+                    <p class="onboarding-subtitle">Your wellness journey</p>
+                    <p class="onboarding-desc">Find balance through daily practices</p>
+                </div>
+                <div style="width: 100%;">
+                    <button class="button button-primary">Get Started</button>
+                    <button class="button button-secondary">Learn More</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 2: TODAY -->
+        <div class="phone">
+            <div class="status-bar">
+                <span class="status-time">14:32</span>
+                <span class="status-icons">🔋</span>
+            </div>
+            <div class="content" style="display: flex; flex-direction: column;">
+                <div class="today">
+                    <span class="screen-title">Today</span>
+                    <h1 class="today-header">Today</h1>
+                    
+                    <div class="health-score">
+                        <div class="health-score-number">72</div>
+                        <div class="health-score-status">Баланс</div>
+                    </div>
+
+                    <div class="metrics-grid">
+                        <div class="metric-card blue">
+                            <span class="metric-label">HRV</span>
+                            <span class="metric-value">45ms</span>
+                        </div>
+                        <div class="metric-card sky">
+                            <span class="metric-label">Sleep</span>
+                            <span class="metric-value">7.2h</span>
+                        </div>
+                        <div class="metric-card pink">
+                            <span class="metric-label">Heart Rate</span>
+                            <span class="metric-value">62bpm</span>
+                        </div>
+                        <div class="metric-card gold">
+                            <span class="metric-label">Steps</span>
+                            <span class="metric-value">8,432</span>
+                        </div>
+                    </div>
+
+                    <div class="schedule-card">
+                        <div>
+                            <div class="schedule-title">🧘 Meditation</div>
+                            <div class="schedule-time">18:00</div>
+                        </div>
+                        <span style="font-size: 12px; color: #c9a96e; font-weight: 600;">SCHEDULED</span>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-bar">
+                <div class="tab-item active">
+                    <div class="tab-icon">🧭</div>
+                    <span>День</span>
+                </div>
+                <div class="tab-item">
+                    <div class="tab-icon">📖</div>
+                    <span>Путь</span>
+                </div>
+                <div class="tab-item">
+                    <div class="tab-icon">🏆</div>
+                    <span>Рост</span>
+                </div>
+                <div class="tab-item">
+                    <div class="tab-icon">👤</div>
+                    <span>Я</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 3: PRACTICE -->
+        <div class="phone">
+            <div class="status-bar">
+                <span class="status-time">14:35</span>
+                <span class="status-icons">🔋</span>
+            </div>
+            <div class="content" style="display: flex; flex-direction: column;">
+                <div class="practice">
+                    <span class="screen-title">Practice</span>
+                    <div class="practice-header">
+                        <button class="back-button">←</button>
+                        <h1 class="practice-title">Путь</h1>
+                    </div>
+
+                    <div class="category-card">
+                        <div class="category-title">💧 Water</div>
+                        <div class="category-desc">Movement & Flow</div>
+                    </div>
+
+                    <div class="practice-levels">
+                        <div class="level-card" style="border-left-color: #888baa;">
+                            <div class="level-info">
+                                <h3>Breath</h3>
+                                <p>Foundational breathing techniques</p>
+                            </div>
+                            <div class="level-duration">5 min</div>
+                        </div>
+                        <div class="level-card" style="border-left-color: #c9a96e;">
+                            <div class="level-info">
+                                <h3>Flow</h3>
+                                <p>Dynamic movements & transitions</p>
+                            </div>
+                            <div class="level-duration">10 min</div>
+                            <div class="premium-badge">PREMIUM</div>
+                        </div>
+                        <div class="level-card" style="border-left-color: #e8b4d4;">
+                            <div class="level-info">
+                                <h3>Harmony</h3>
+                                <p>Complete mind-body integration</p>
+                            </div>
+                            <div class="level-duration">15 min</div>
+                        </div>
+                    </div>
+                </div>
+                <button class="button button-primary" style="margin: 0 20px 20px;">Start Practice</button>
+            </div>
+            <div class="tab-bar">
+                <div class="tab-item">
+                    <div class="tab-icon">🧭</div>
+                    <span>День</span>
+                </div>
+                <div class="tab-item active">
+                    <div class="tab-icon">📖</div>
+                    <span>Путь</span>
+                </div>
+                <div class="tab-item">
+                    <div class="tab-icon">🏆</div>
+                    <span>Рост</span>
+                </div>
+                <div class="tab-item">
+                    <div class="tab-icon">👤</div>
+                    <span>Я</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 4: PROGRESS -->
+        <div class="phone">
+            <div class="status-bar">
+                <span class="status-time">14:38</span>
+                <span class="status-icons">🔋</span>
+            </div>
+            <div class="content" style="display: flex; flex-direction: column;">
+                <div class="progress">
+                    <span class="screen-title">Progress</span>
+                    <h1 class="progress-header">Рост</h1>
+
+                    <div class="streak-box">
+                        <div class="streak-icon">🔥</div>
+                        <div class="streak-number">42</div>
+                        <div class="streak-label">Day Streak</div>
+                    </div>
+
+                    <div class="xp-container">
+                        <div class="xp-label">
+                            <span>Experience Points</span>
+                            <span>2,450 / 3,750 XP</span>
+                        </div>
+                        <div class="xp-bar">
+                            <div class="xp-progress"></div>
+                        </div>
+                    </div>
+
+                    <div class="achievements" style="margin-top: 24px;">
+                        <div class="achievement-card">
+                            <div class="achievement-icon">🌱</div>
+                            <div class="achievement-info">
+                                <h3>First Steps</h3>
+                                <p>Complete your first practice</p>
+                            </div>
+                        </div>
+                        <div class="achievement-card">
+                            <div class="achievement-icon">⭐</div>
+                            <div class="achievement-info">
+                                <h3>Week Warrior</h3>
+                                <p>7 day practice streak</p>
+                            </div>
+                        </div>
+                        <div class="achievement-card locked">
+                            <div class="achievement-icon">👑</div>
+                            <div class="achievement-info">
+                                <h3>Master Mind</h3>
+                                <p>100 practices completed</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-bar">
+                <div class="tab-item">
+                    <div class="tab-icon">🧭</div>
+                    <span>День</span>
+                </div>
+                <div class="tab-item">
+                    <div class="tab-icon">📖</div>
+                    <span>Путь</span>
+                </div>
+                <div class="tab-item active">
+                    <div class="tab-icon">🏆</div>
+                    <span>Рост</span>
+                </div>
+                <div class="tab-item">
+                    <div class="tab-icon">👤</div>
+                    <span>Я</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 5: PROFILE -->
+        <div class="phone">
+            <div class="status-bar">
+                <span class="status-time">14:40</span>
+                <span class="status-icons">🔋</span>
+            </div>
+            <div class="content" style="display: flex; flex-direction: column;">
+                <div class="profile">
+                    <span class="screen-title">Profile</span>
+                    <h1 class="profile-header">Я</h1>
+
+                    <div class="profile-avatar">AB</div>
+                    <div class="profile-name">Alex Brown</div>
+                    <div class="profile-subscription">Premium until Dec 2026</div>
+
+                    <div class="profile-section">
+                        <div class="section-title">Health Connections</div>
+                        <div class="connections">
+                            <div class="connection-item">
+                                <div class="connection-icon">🍎</div>
+                                <div class="connection-label">Apple Health</div>
+                            </div>
+                            <div class="connection-item">
+                                <div class="connection-icon">🔴</div>
+                                <div class="connection-label">Google Fit</div>
+                            </div>
+                            <div class="connection-item">
+                                <div class="connection-icon">💍</div>
+                                <div class="connection-label">Oura Ring</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="profile-section">
+                        <div class="section-title">Background Themes</div>
+                        <div class="themes">
+                            <div class="theme-option theme-water"></div>
+                            <div class="theme-option theme-sky"></div>
+                            <div class="theme-option theme-aurora"></div>
+                            <div class="theme-option theme-mystic"></div>
+                        </div>
+                    </div>
+
+                    <div class="profile-section">
+                        <div class="section-title">Preferences</div>
+                        <div class="setting-item">
+                            <span>Daily Goal</span>
+                            <span class="setting-value">5 rituals</span>
+                        </div>
+                        <div class="setting-item">
+                            <span>Language</span>
+                            <span class="setting-value">English</span>
+                        </div>
+                        <div class="setting-item">
+                            <span>Notifications</span>
+                            <span class="setting-value">On</span>
+                        </div>
+                    </div>
+
+                    <button class="logout-button">Log out</button>
+                </div>
+            </div>
+            <div class="tab-bar">
+                <div class="tab-item">
+                    <div class="tab-icon">🧭</div>
+                    <span>День</span>
+                </div>
+                <div class="tab-item">
+                    <div class="tab-icon">📖</div>
+                    <span>Путь</span>
+                </div>
+                <div class="tab-item">
+                    <div class="tab-icon">🏆</div>
+                    <span>Рост</span>
+                </div>
+                <div class="tab-item active">
+                    <div class="tab-icon">👤</div>
+                    <span>Я</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

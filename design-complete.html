@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ritual App - Design System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Inter:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: linear-gradient(135deg, #f8f6f3 0%, #f2eff0 100%);
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+
+        .layout {
+            max-width: 2400px;
+            margin: 0 auto;
+        }
+
+        .title-section {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .title-section h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 56px;
+            font-weight: 300;
+            color: #2d2520;
+            margin-bottom: 12px;
+            letter-spacing: -1px;
+        }
+
+        .title-section p {
+            font-size: 16px;
+            color: #8b8680;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .screens-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(430px, 1fr));
+            gap: 60px;
+        }
+
+        .device {
+            background: white;
+            border-radius: 50px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(45, 37, 32, 0.12),
+                        0 0 1px rgba(45, 37, 32, 0.05);
+            display: flex;
+            flex-direction: column;
+            height: 844px;
+            position: relative;
+        }
+
+        .device::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 160px;
+            height: 28px;
+            background: #2d2520;
+            border-radius: 0 0 24px 24px;
+            z-index: 100;
+        }
+
+        .status-bar {
+            height: 50px;
+            padding: 0 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            color: #2d2520;
+            font-weight: 500;
+        }
+
+        .screen-content {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .screen-content::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .screen-content::-webkit-scrollbar-thumb {
+            background: rgba(45, 37, 32, 0.1);
+            border-radius: 2px;
+        }
+
+        .tab-bar {
+            height: 80px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            border-top: 1px solid rgba(45, 37, 32, 0.06);
+            background: rgba(248, 246, 243, 0.8);
+            backdrop-filter: blur(10px);
+            gap: 8px;
+            padding: 8px 12px 12px;
+            margin: 0 12px 12px 12px;
+            border-radius: 24px;
+        }
+
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: 16px;
+            color: #8b8680;
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .tab-item.active {
+            background: rgba(201, 169, 110, 0.12);
+            color: #c9a96e;
+        }
+
+        .tab-icon {
+            font-size: 20px;
+            line-height: 1;
+        }
+
+        /* ONBOARDING */
+        .screen-onboarding {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 60px 24px 40px;
+        }
+
+        .onb-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .gradient-orb {
+            width: 160px;
+            height: 160px;
+            margin: 0 auto 32px;
+            background: linear-gradient(135deg, #c9a96e 0%, #e8b4d4 50%, #b8d4e8 100%);
+            border-radius: 50%;
+            box-shadow: 0 24px 48px rgba(201, 169, 110, 0.15);
+            animation: subtle-float 6s ease-in-out infinite;
+        }
+
+        @keyframes subtle-float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-12px); }
+        }
+
+        .onb-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 48px;
+            font-weight: 300;
+            color: #2d2520;
+            margin-bottom: 12px;
+            letter-spacing: -0.5px;
+        }
+
+        .onb-subtitle {
+            font-size: 15px;
+            color: #8b8680;
+            margin-bottom: 20px;
+        }
+
+        .onb-desc {
+            font-size: 13px;
+            color: #a0989f;
+            line-height: 1.5;
+        }
+
+        .button {
+            height: 54px;
+            border: none;
+            border-radius: 14px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 0.2px;
+            margin-bottom: 12px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #c9a96e 0%, #b8985f 100%);
+            color: white;
+            box-shadow: 0 8px 24px rgba(201, 169, 110, 0.2);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(201, 169, 110, 0.3);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #c9a96e;
+            border: 1.5px solid #c9a96e;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(201, 169, 110, 0.08);
+        }
+
+        /* TODAY SCREEN */
+        .screen-today {
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            gap: 24px;
+        }
+
+        .section-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 32px;
+            font-weight: 300;
+            color: #2d2520;
+            letter-spacing: -0.5px;
+        }
+
+        .health-score-circle {
+            background: linear-gradient(135deg, rgba(201, 169, 110, 0.08) 0%, rgba(184, 212, 232, 0.08) 100%);
+            border-radius: 20px;
+            padding: 32px;
+            text-align: center;
+            border: 1px solid rgba(201, 169, 110, 0.12);
+        }
+
+        .score-number {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 80px;
+            font-weight: 300;
+            color: #c9a96e;
+            line-height: 0.9;
+        }
+
+        .score-status {
+            font-size: 13px;
+            color: #8b8680;
+            margin-top: 8px;
+            font-weight: 500;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.2) 100%);
+            border: 1px solid rgba(201, 169, 110, 0.1);
+            border-radius: 14px;
+            padding: 14px;
+            border-left: 3px solid;
+        }
+
+        .metric-card.hrv { border-left-color: #888baa; }
+        .metric-card.sleep { border-left-color: #b8d4e8; }
+        .metric-card.heart { border-left-color: #e8b4d4; }
+        .metric-card.steps { border-left-color: #c9a96e; }
+
+        .metric-label {
+            font-size: 11px;
+            color: #8b8680;
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+
+        .metric-value {
+            font-size: 18px;
+            color: #2d2520;
+            font-weight: 600;
+        }
+
+        .schedule-section {
+            border-top: 1px solid rgba(45, 37, 32, 0.06);
+            padding-top: 24px;
+        }
+
+        .schedule-label {
+            font-size: 11px;
+            color: #8b8680;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-bottom: 12px;
+        }
+
+        .schedule-item {
+            background: linear-gradient(135deg, rgba(201, 169, 110, 0.08) 0%, rgba(201, 169, 110, 0.04) 100%);
+            border-left: 3px solid #c9a96e;
+            border-radius: 12px;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .schedule-time {
+            font-size: 13px;
+            color: #8b8680;
+        }
+
+        /* PRACTICE SCREEN */
+        .screen-practice {
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            gap: 24px;
+        }
+
+        .back-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .back-btn {
+            width: 32px;
+            height: 32px;
+            background: transparent;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #2d2520;
+        }
+
+        .chapter-card {
+            background: linear-gradient(135deg, rgba(107, 163, 197, 0.08) 0%, rgba(184, 212, 232, 0.08) 100%);
+            border: 1px solid rgba(107, 163, 197, 0.12);
+            border-radius: 14px;
+            padding: 20px;
+        }
+
+        .chapter-title {
+            font-size: 16px;
+            color: #2d2520;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .chapter-desc {
+            font-size: 13px;
+            color: #8b8680;
+        }
+
+        .levels-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .level-card {
+            background: rgba(242, 239, 240, 0.6);
+            border: 1px solid rgba(45, 37, 32, 0.05);
+            border-left: 3px solid;
+            border-radius: 12px;
+            padding: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+        }
+
+        .level-card.blue { border-left-color: #888baa; }
+        .level-card.gold { border-left-color: #c9a96e; }
+        .level-card.pink { border-left-color: #e8b4d4; }
+
+        .level-info h3 {
+            font-size: 14px;
+            color: #2d2520;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .level-info p {
+            font-size: 12px;
+            color: #8b8680;
+            line-height: 1.3;
+        }
+
+        .level-duration {
+            font-size: 12px;
+            color: #8b8680;
+            white-space: nowrap;
+        }
+
+        .premium-badge {
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            background: #c9a96e;
+            color: white;
+            font-size: 9px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        /* PROGRESS SCREEN */
+        .screen-progress {
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            gap: 24px;
+        }
+
+        .streak-box {
+            background: linear-gradient(135deg, rgba(201, 169, 110, 0.08) 0%, rgba(232, 180, 212, 0.08) 100%);
+            border: 1px solid rgba(201, 169, 110, 0.12);
+            border-radius: 14px;
+            padding: 28px;
+            text-align: center;
+        }
+
+        .streak-flame {
+            font-size: 40px;
+            margin-bottom: 12px;
+        }
+
+        .streak-number {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 48px;
+            font-weight: 300;
+            color: #c9a96e;
+            line-height: 0.9;
+        }
+
+        .streak-label {
+            font-size: 11px;
+            color: #8b8680;
+            margin-top: 6px;
+            font-weight: 500;
+        }
+
+        .xp-section {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .xp-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #8b8680;
+            font-weight: 500;
+        }
+
+        .xp-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(242, 239, 240, 0.8);
+            border-radius: 3px;
+            overflow: hidden;
+            border: 1px solid rgba(45, 37, 32, 0.04);
+        }
+
+        .xp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #c9a96e 0%, #b8985f 100%);
+            width: 65%;
+            border-radius: 3px;
+        }
+
+        .achievements {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .achievement {
+            background: rgba(242, 239, 240, 0.6);
+            border: 1px solid rgba(45, 37, 32, 0.05);
+            border-radius: 12px;
+            padding: 12px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .achievement.locked {
+            opacity: 0.5;
+        }
+
+        .achievement-icon {
+            width: 44px;
+            height: 44px;
+            background: rgba(201, 169, 110, 0.12);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .achievement.locked .achievement-icon {
+            background: rgba(139, 134, 128, 0.08);
+        }
+
+        .achievement-text h3 {
+            font-size: 13px;
+            color: #2d2520;
+            font-weight: 600;
+            margin-bottom: 1px;
+        }
+
+        .achievement-text p {
+            font-size: 11px;
+            color: #8b8680;
+        }
+
+        /* PROFILE SCREEN */
+        .screen-profile {
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            gap: 24px;
+        }
+
+        .profile-header-section {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid rgba(45, 37, 32, 0.06);
+        }
+
+        .avatar {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #888baa 0%, #6ba3c5 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 28px;
+            font-weight: 600;
+            margin: 0 auto 16px;
+            box-shadow: 0 12px 32px rgba(107, 163, 197, 0.2);
+        }
+
+        .profile-name {
+            font-size: 18px;
+            color: #2d2520;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .profile-subscription {
+            font-size: 11px;
+            color: #8b8680;
+            font-weight: 500;
+        }
+
+        .profile-section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .profile-section-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: #8b8680;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .connections {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .connection {
+            background: rgba(242, 239, 240, 0.6);
+            border: 1px solid rgba(45, 37, 32, 0.05);
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .connection-icon {
+            font-size: 22px;
+        }
+
+        .connection-label {
+            font-size: 10px;
+            color: #8b8680;
+            font-weight: 500;
+        }
+
+        .themes-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        .theme-box {
+            aspect-ratio: 1;
+            border-radius: 12px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .theme-water { background: linear-gradient(135deg, #6ba3c5 0%, #b8d4e8 100%); }
+        .theme-sky { background: linear-gradient(135deg, #b8d4e8 0%, #d4e8f5 100%); }
+        .theme-aurora { background: linear-gradient(135deg, #e8b4d4 0%, #f0d4e8 100%); }
+        .theme-mystic { background: linear-gradient(135deg, #a8a8d4 0%, #d4d4f0 100%); }
+
+        .theme-box:hover {
+            border-color: #2d2520;
+            box-shadow: 0 8px 24px rgba(45, 37, 32, 0.15);
+        }
+
+        .setting-item {
+            background: rgba(242, 239, 240, 0.6);
+            border: 1px solid rgba(45, 37, 32, 0.05);
+            border-radius: 12px;
+            padding: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            color: #2d2520;
+        }
+
+        .setting-value {
+            font-size: 12px;
+            color: #8b8680;
+        }
+
+        .logout-btn {
+            background: rgba(255, 107, 107, 0.1);
+            color: #d64a4a;
+            border: none;
+            border-radius: 12px;
+            height: 44px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 16px;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 107, 107, 0.2);
+        }
+
+        .label {
+            font-size: 11px;
+            color: #8b8680;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <div class="title-section">
+            <h1>Ritual</h1>
+            <p>Light, airy & elegantly designed wellness app inspired by Yandex Music and Oura Ring</p>
+        </div>
+
+        <div class="screens-grid">
+            <!-- SCREEN 1: ONBOARDING -->
+            <div class="device">
+                <div class="status-bar">
+                    <span>09:41</span>
+                    <span>🔋</span>
+                </div>
+                <div class="screen-content screen-onboarding">
+                    <div class="onb-header">
+                        <div class="gradient-orb"></div>
+                        <h2 class="onb-title">Ritual</h2>
+                        <p class="onb-subtitle">Your wellness journey</p>
+                        <p class="onb-desc">Find balance through daily practices</p>
+                    </div>
+                    <div style="width: 100%;">
+                        <button class="button btn-primary">Get Started</button>
+                        <button class="button btn-secondary">Learn More</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SCREEN 2: TODAY -->
+            <div class="device">
+                <div class="status-bar">
+                    <span>14:32</span>
+                    <span>🔋</span>
+                </div>
+                <div class="screen-content screen-today">
+                    <h2 class="section-title">День</h2>
+                    
+                    <div class="health-score-circle">
+                        <div class="score-number">72</div>
+                        <div class="score-status">Баланс</div>
+                    </div>
+
+                    <div class="metrics-grid">
+                        <div class="metric-card hrv">
+                            <div class="metric-label">HRV</div>
+                            <div class="metric-value">78ms</div>
+                        </div>
+                        <div class="metric-card sleep">
+                            <div class="metric-label">Sleep</div>
+                            <div class="metric-value">8.2h</div>
+                        </div>
+                        <div class="metric-card heart">
+                            <div class="metric-label">Heart Rate</div>
+                            <div class="metric-value">64bpm</div>
+                        </div>
+                        <div class="metric-card steps">
+                            <div class="metric-label">Steps</div>
+                            <div class="metric-value">11.2k</div>
+                        </div>
+                    </div>
+
+                    <div class="schedule-section">
+                        <div class="schedule-label">Today's rituals</div>
+                        <div class="schedule-item">
+                            <span>🧘 Утреннее намерение</span>
+                            <span class="schedule-time">08:00</span>
+                        </div>
+                        <div class="schedule-item">
+                            <span>📍 Фокус внимания</span>
+                            <span class="schedule-time">12:30</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="tab-bar">
+                    <div class="tab-item active">
+                        <div class="tab-icon">🧭</div>
+                        <span>День</span>
+                    </div>
+                    <div class="tab-item">
+                        <div class="tab-icon">📖</div>
+                        <span>Путь</span>
+                    </div>
+                    <div class="tab-item">
+                        <div class="tab-icon">🏆</div>
+                        <span>Рост</span>
+                    </div>
+                    <div class="tab-item">
+                        <div class="tab-icon">👤</div>
+                        <span>Я</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SCREEN 3: PRACTICE -->
+            <div class="device">
+                <div class="status-bar">
+                    <span>14:35</span>
+                    <span>🔋</span>
+                </div>
+                <div class="screen-content screen-practice">
+                    <div class="back-header">
+                        <button class="back-btn">←</button>
+                        <h2 class="section-title">Путь</h2>
+                    </div>
+
+                    <div class="chapter-card">
+                        <div class="chapter-title">💧 Исток: Рождение Света</div>
+                        <div class="chapter-desc">В рассеянном внимании загорается первая искра</div>
+                    </div>
+
+                    <div class="label">Available Levels</div>
+                    <div class="levels-container">
+                        <div class="level-card blue">
+                            <div class="level-info">
+                                <h3>Искра в тумане</h3>
+                                <p>Собери мысли в фокус</p>
+                            </div>
+                            <div class="level-duration">5 min</div>
+                        </div>
+                        <div class="level-card gold">
+                            <div class="level-info">
+                                <h3>Три уровня тебя</h3>
+                                <p>Осознай себя наблюдателем</p>
+                            </div>
+                            <div class="level-duration">5 min</div>
+                            <div class="premium-badge">PREMIUM</div>
+                        </div>
+                        <div class="level-card pink">
+                            <div class="level-info">
+                                <h3>Выкачка сияния</h3>
+                                <p>Выбери своё состояние</p>
+                            </div>
+                            <div class="level-duration">6 min</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tab-bar">
+                    <div class="tab-item">
+                        <div class="tab-icon">🧭</div>
+                        <span>День</span>
+                    </div>
+                    <div class="tab-item active">
+                        <div class="tab-icon">📖</div>
+                        <span>Путь</span>
+                    </div>
+                    <div class="tab-item">
+                        <div class="tab-icon">🏆</div>
+                        <span>Рост</span>
+                    </div>
+                    <div class="tab-item">
+                        <div class="tab-icon">👤</div>
+                        <span>Я</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SCREEN 4: PROGRESS -->
+            <div class="device">
+                <div class="status-bar">
+                    <span>14:38</span>
+                    <span>🔋</span>
+                </div>
+                <div class="screen-content screen-progress">
+                    <h2 class="section-title">Рост</h2>
+
+                    <div class="streak-box">
+                        <div class="streak-flame">🔥</div>
+                        <div class="streak-number">42</div>
+                        <div class="streak-label">Day Streak</div>
+                    </div>
+
+                    <div class="xp-section">
+                        <div class="xp-header">
+                            <span>Experience Points</span>
+                            <span>2,450 / 3,750</span>
+                        </div>
+                        <div class="xp-bar">
+                            <div class="xp-fill"></div>
+                        </div>
+                    </div>
+
+                    <div class="label">Achievements</div>
+                    <div class="achievements">
+                        <div class="achievement">
+                            <div class="achievement-icon">🌱</div>
+                            <div class="achievement-text">
+                                <h3>First Steps</h3>
+                                <p>Complete your first practice</p>
+                            </div>
+                        </div>
+                        <div class="achievement">
+                            <div class="achievement-icon">⭐</div>
+                            <div class="achievement-text">
+                                <h3>Week Warrior</h3>
+                                <p>7 day practice streak</p>
+                            </div>
+                        </div>
+                        <div class="achievement locked">
+                            <div class="achievement-icon">👑</div>
+                            <div class="achievement-text">
+                                <h3>Master Mind</h3>
+                                <p>100 practices completed</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tab-bar">
+                    <div class="tab-item">
+                        <div class="tab-icon">🧭</div>
+                        <span>День</span>
+                    </div>
+                    <div class="tab-item">
+                        <div class="tab-icon">📖</div>
+                        <span>Путь</span>
+                    </div>
+                    <div class="tab-item active">
+                        <div class="tab-icon">🏆</div>
+                        <span>Рост</span>
+                    </div>
+                    <div class="tab-item">
+                        <div class="tab-icon">👤</div>
+                        <span>Я</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SCREEN 5: PROFILE -->
+            <div class="device">
+                <div class="status-bar">
+                    <span>14:40</span>
+                    <span>🔋</span>
+                </div>
+                <div class="screen-content screen-profile">
+                    <h2 class="section-title">Я</h2>
+
+                    <div class="profile-header-section">
+                        <div class="avatar">AB</div>
+                        <div class="profile-name">Alex Brown</div>
+                        <div class="profile-subscription">Premium until Dec 2026</div>
+                    </div>
+
+                    <div class="profile-section">
+                        <div class="profile-section-title">Health Connections</div>
+                        <div class="connections">
+                            <div class="connection">
+                                <div class="connection-icon">🍎</div>
+                                <div class="connection-label">Apple Health</div>
+                            </div>
+                            <div class="connection">
+                                <div class="connection-icon">🔴</div>
+                                <div class="connection-label">Google Fit</div>
+                            </div>
+                            <div class="connection">
+                                <div class="connection-icon">💍</div>
+                                <div class="connection-label">Oura Ring</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="profile-section">
+                        <div class="profile-section-title">Background Themes</div>
+                        <div class="themes-grid">
+                            <div class="theme-box theme-water"></div>
+                            <div class="theme-box theme-sky"></div>
+                            <div class="theme-box theme-aurora"></div>
+                            <div class="theme-box theme-mystic"></div>
+                        </div>
+                    </div>
+
+                    <div class="profile-section">
+                        <div class="profile-section-title">Preferences</div>
+                        <div class="setting-item">
+                            <span>Daily Goal</span>
+                            <span class="setting-value">5 rituals</span>
+                        </div>
+                        <div class="setting-item">
+                            <span>Language</span>
+                            <span class="setting-value">English</span>
+                        </div>
+                        <div class="setting-item">
+                            <span>Notifications</span>
+                            <span class="setting-value">On</span>
+                        </div>
+                    </div>
+
+                    <button class="logout-btn">Log out</button>
+                </div>
+                <div class="tab-bar">
+                    <div class="tab-item">
+                        <div class="tab-icon">🧭</div>
+                        <span>День</span>
+                    </div>
+                    <div class="tab-item">
+                        <div class="tab-icon">📖</div>
+                        <span>Путь</span>
+                    </div>
+                    <div class="tab-item">
+                        <div class="tab-icon">🏆</div>
+                        <span>Рост</span>
+                    </div>
+                    <div class="tab-item active">
+                        <div class="tab-icon">👤</div>
+                        <span>Я</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

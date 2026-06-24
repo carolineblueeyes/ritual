@@ -1,1424 +1,397 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { App as CapacitorApp } from '@capacitor/app';
-import { StatusBar, Style } from '@capacitor/status-bar';
-import BottomTabBar from './components/BottomTabBar';
-import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Compass, 
-  MapPin, 
-  Activity, 
-  Check, 
-  ChevronRight, 
-  TrendingUp, 
-  Settings, 
-  User, 
-  ShieldCheck, 
-  Lock, 
-  Plus, 
-  X,
-  Play,
-  Pause,
-  AlertCircle,
-  HelpCircle,
-  Sparkles,
-  Waves,
-  Zap,
-  Eye,
-  Heart,
-  Droplet,
-  Smartphone,
-  Info,
-  History,
-  RotateCcw,
-  Volume2
-} from 'lucide-react';
-import { HealthState, Practice, ActivityLog, UserStats, Achievement } from './types';
-import { ALL_PRACTICES, INITIAL_ACHIEVEMENTS } from './data';
-import { healthService, healthBridge } from './services';
-// Expose for HealthBridge UI buttons in TodayView
-(window as any).healthBridge = healthBridge;
-import type { HealthData } from './services/HealthService';
+import React, { useState } from "react";
+import { Sparkles, Mic, Compass, Trophy, User, BookOpen } from "lucide-react";
+import { UserProfile, RitualHealthMetrics, DayScheduleSlot } from "./types";
+import { Onboarding } from "./components/Onboarding";
+import { VoiceAssistant } from "./components/VoiceAssistant";
+import { TodayTab } from "./components/TodayTab";
+import { PracticeTab } from "./components/PracticeTab";
+import { ProgressTab } from "./components/ProgressTab";
+import { ProfileTab } from "./components/ProfileTab";
+import { CHAPTERS, RITUALS_DATA } from "./data";
+import { GlobalVisualBackdrop } from "./components/PracticeVisualizers";
+import { HealthService } from "./services/HealthService";
 
-// Component imports
-import TodayView from './components/TodayView';
-import PracticesView from './components/PracticesView';
-import ProgressView from './components/ProgressView';
-import NavigatorModal from './components/NavigatorModal';
-import SubscriptionPlus from './components/SubscriptionPlus';
-import RingCustomizer from './components/RingCustomizer';
-import Onboarding from './components/Onboarding';
-import PracticeHistoryModal from './components/PracticeHistoryModal';
-import HealthDetailsModal from './components/HealthDetailsModal';
+interface HealthMonitorCard {
+  id: string;
+  icon: string;
+  label: string;
+  metricKey: keyof RitualHealthMetrics;
+  unit: string;
+  trend: string;
+  status: string;
+  description: string;
+  graphData: number[];
+}
+
+const HEALTH_MONITOR_CARDS: HealthMonitorCard[] = [
+  { id: "sleep", icon: "🛌", label: "Сон", metricKey: "sleepDuration", unit: "ч", trend: "+0.2ч", status: "норма", description: "Глубокие фазы сна восстанавливают тело и разум. Оптимальная норма — 7–9 часов.", graphData: [7, 6.5, 8.2, 5.5, 7.8, 8.5, 6.8] },
+  { id: "activity", icon: "🏃", label: "Активность", metricKey: "activitySteps", unit: "шагов", trend: "+22%", status: "выше нормы", description: "Движение стимулирует кровообращение, снижает кортизол и повышает энергию.", graphData: [8, 4, 12, 10, 15, 11.2, 9] },
+  { id: "hrv", icon: "🧠", label: "ВСР", metricKey: "hrv", unit: "мс", trend: "+15%", status: "хорошо", description: "Вариабельность ритма — показатель гибкости нервной системы. Высокий ВСР = восстановление.", graphData: [50, 40, 65, 45, 90, 72, 85] },
+  { id: "pulse", icon: "❤️", label: "Пульс покоя", metricKey: "restingHeartRate", unit: "уд/мин", trend: "-4%", status: "в норме", description: "Низкий пульс покоя — признак тренированности сердца и низкого стресса.", graphData: [68, 72, 65, 63, 62, 64, 60] },
+  { id: "respiration", icon: "🌬️", label: "Дыхание", metricKey: "respirationRate", unit: "вд/мин", trend: "14", status: "ровное", description: "Частота дыхания отражает уровень стресса и расслабления. 12–16 вдохов — здоровая норма.", graphData: [16, 15, 14, 13, 15, 14, 14] },
+  { id: "spo2", icon: "💨", label: "Кислород SpO₂", metricKey: "spo2", unit: "%", trend: "99%", status: "отлично", description: "Насыщение крови кислородом. Норма: 95–100%. Показатель эффективности дыхания.", graphData: [97, 98, 99, 97, 98, 99, 99] },
+  { id: "temperature", icon: "🌡️", label: "Температура", metricKey: "bodyTemperature", unit: "°C", trend: "36.6", status: "норма", description: "Базальная температура тела. Отклонения могут указывать на воспаление или перегрузку.", graphData: [36.5, 36.4, 36.6, 36.7, 36.5, 36.6, 36.6] },
+  { id: "energy", icon: "⚡", label: "Энергия", metricKey: "energyLevel", unit: "%", trend: "+8%", status: "выше среднего", description: "Субъективный уровень энергии. Формируется из качества сна, активности и восстановления.", graphData: [55, 60, 72, 48, 65, 70, 72] },
+];
+
+function resolveMetricValue(metrics: RitualHealthMetrics, key: keyof RitualHealthMetrics): string | number {
+  const v = metrics[key];
+  if (key === "activitySteps") return (v as number / 1000).toFixed(1) + "K";
+  if (key === "restingHeartRate") return v as number;
+  if (key === "sleepDuration") return v as number;
+  if (key === "bodyTemperature") return (v as number).toFixed(1);
+  if (key === "spo2") return v as number;
+  if (key === "energyLevel") return v as number;
+  if (key === "respirationRate") return v as number;
+  if (key === "hrv") return v as number;
+  return v as number;
+}
 
 export default function App() {
-  // Navigation derived from react-router
-  const location = useLocation();
-  const navigate = useNavigate();
-  const activeTab = (location.pathname.replace('/', '') || 'today') as 'today' | 'practices' | 'progress' | 'profile';
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
+  const [activeTab, setActiveTab] = useState<"today" | "practice" | "progress" | "profile">("today");
+  const [voiceAssistantOpen, setVoiceAssistantOpen] = useState(false);
+  const [showMetricsDetails, setShowMetricsDetails] = useState(false);
+  const [toast, setToast] = useState<{ title: string; subtitle?: string } | null>(null);
 
-  // Core User state persistently saved via localStorage
-  const [isOnboarded, setIsOnboarded] = useState<boolean>(() => {
-    const saved = localStorage.getItem('ritual_onboarded');
-    return saved ? JSON.parse(saved) : false;
+  const triggerToast = (title: string, subtitle?: string) => {
+    setToast({ title, subtitle });
+    setTimeout(() => setToast(null), 4500);
+  };
+
+  const [expandedMetric, setExpandedMetric] = useState<string | null>(null);
+
+  const [profile, setProfile] = useState<UserProfile>({
+    name: "",
+    isSubscribed: false,
+    subscriptionExpiry: null,
+    activeBg: "water",
+    xp: 0,
+    streak: 0,
+    totalRitualsCount: 0,
+    isCustomRingPreordered: false,
+    ringOrderCode: null,
+    ringMaterial: "glow_obsidian",
+    ringEngraving: "",
+    ringSize: null,
+    ringBatteryCharge: 78,
+    isAppleHealthConnected: false,
+    isGoogleFitConnected: false,
+    isHealthConnectConnected: false,
+    isCoreRingConnected: false,
+    weeklyGoal: 5,
+    achievements: [],
   });
 
-  const [userName, setUserName] = useState<string>(() => {
-    const saved = localStorage.getItem('ritual_username');
-    return saved || 'Странник Внимания';
+  const [metrics, setMetrics] = useState<RitualHealthMetrics>({
+    score: 84,
+    status: "сияешь",
+    statusText: "Ты полностью восстановлен и готов действовать",
+    hrv: 78,
+    sleepDuration: 8.2,
+    restingHeartRate: 64,
+    activitySteps: 11200,
+    bodyTemperature: 36.6,
+    spo2: 99,
+    respirationRate: 14,
+    energyLevel: 72,
+    stressLevel: 34,
   });
 
-  const [isPlus, setIsPlus] = useState<boolean>(() => {
-    const saved = localStorage.getItem('ritual_plus_active');
-    return saved ? JSON.parse(saved) : true; // Default True for MVP richness
-  });
+  const [schedule, setSchedule] = useState<DayScheduleSlot[]>([
+    { id: "s1", time: "08:00", title: "Утреннее намерение", ritualId: "morning_affirmation", completed: false, color: "#C9A96E" },
+    { id: "s2", time: "12:30", title: "Фокус внимания", ritualId: "priorities", completed: false, color: "#8AB4C8" },
+    { id: "s3", time: "16:30", title: "Осознанное движение", ritualId: "grounding", completed: false, color: "#D4875E" },
+    { id: "s4", time: "20:30", title: "Дыхание 4-7-8", ritualId: "sigh", completed: false, color: "#8899AA" },
+  ]);
 
-  const [ringConnected, setRingConnected] = useState<boolean>(() => {
-    const saved = localStorage.getItem('ring_connected');
-    return saved === 'true';
-  });
+  const [completedLevels, setCompletedLevels] = useState<string[]>([]);
+  const [practiceActiveArea, setPracticeActiveArea] = useState<"menu" | "movement" | "focus" | "gaze" | "levelPlayer" | "ritualPlayer" | null>(null);
+  const [practiceSelectedLevel, setPracticeSelectedLevel] = useState<any | null>(null);
+  const [practiceSelectedChapter, setPracticeSelectedChapter] = useState<any | null>(null);
+  const [practiceSelectedRitualData, setPracticeSelectedRitualData] = useState<any | null>(null);
 
-  const [ringConfig, setRingConfig] = useState<any>({
-    shell: 'Glow Obsidian',
-    engraving: 'Я здесь'
-  });
+  const handleOnboardingComplete = (responses: { message: string; answer: string }[]) => {
+    const name = responses.find(r => r.message.includes("уровень стресса"))?.answer || "Искатель";
+    setProfile((prev) => ({ ...prev, name }));
+    onLevelComplete("istok_1");
+    setOnboardingComplete(true);
+  };
 
-  const [healthScore, setHealthScore] = useState<number>(() => {
-    const saved = localStorage.getItem('ritual_health_score');
-    return saved ? JSON.parse(saved) : 84;
-  });
-  const [healthState, setHealthState] = useState<HealthState>(() => {
-    const saved = localStorage.getItem('ritual_health_state') as HealthState | null;
-    return saved || 'Balance';
-  });
-
-  const [stats, setStats] = useState<UserStats>({
-    daysPractice: 3,
-    ritualsCompleted: 5,
-    daysStreak: 3
-  });
-
-  const [achievements, setAchievements] = useState<Achievement[]>(() => {
-    const saved = localStorage.getItem('ritual_achievements');
-    if (saved) return JSON.parse(saved);
-    // Auto unlock some achievements for richness if rituals > 0
-    return INITIAL_ACHIEVEMENTS.map(ach => {
-      if (ach.id === 'first_spark') return { ...ach, unlocked: true };
-      return ach;
+  const onLevelComplete = (levelId: string) => {
+    setCompletedLevels((prev) => {
+      if (prev.includes(levelId)) return prev;
+      const next = [...prev, levelId];
+      setProfile((p) => ({
+        ...p,
+        xp: p.xp + 25,
+        totalRitualsCount: p.totalRitualsCount + 1,
+        streak: next.length > 3 ? 5 : next.length,
+      }));
+      return next;
     });
-  });
+  };
 
-  const [favorites, setFavorites] = useState<string[]>(() => {
-    const saved = localStorage.getItem('ritual_favorites');
-    return saved ? JSON.parse(saved) : ['5-4-3-2-1', 'physio-sigh'];
-  });
+  const handleLaunchRitualAndTrack = (id: string, group?: string) => {
+    let targetArea: "menu" | "movement" | "focus" | "gaze" | "levelPlayer" | "ritualPlayer" = "menu";
+    let targetLevel: any = null;
+    let targetChapter: any = null;
+    let targetRitualData: any = null;
+    const normalizedId = id.toLowerCase();
 
-  const [background, setBackground] = useState<'water' | 'sky' | 'aurora'>('water');
-
-  // Реальные данные здоровья — запрос только по кнопке Connect, не на старте
-  const [isHealthConnected, setIsHealthConnected] = useState(() => {
-    return localStorage.getItem('ritual_health_connected') === 'true';
-  });
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [realHealthData, setRealHealthData] = useState<HealthData | null>(null);
-  const [healthError, setHealthError] = useState<string | null>(null);
-
-  const autoConnectAttempted = useRef(false);
-
-  // При монтировании: если уже подключены — загружаем данные,
-  // если не подключены — автоматически показываем Health Connect
-  useEffect(() => {
-    if (autoConnectAttempted.current) return;
-    autoConnectAttempted.current = true;
-
-    if (isHealthConnected) {
-      fetchHealthData();
+    if (normalizedId === "grounding" || normalizedId === "s3") {
+      targetArea = "movement";
+    } else if (normalizedId === "priorities" || normalizedId === "s2") {
+      targetArea = "focus";
+    } else if (normalizedId === "sigh" || normalizedId === "s4") {
+      targetArea = "gaze";
     } else {
-      handleConnectHealth();
-    }
-  }, []);
-
-  async function fetchHealthData() {
-    setIsSyncing(true);
-    try {
-      const data = await healthService.getCurrentHealth();
-      setRealHealthData(data);
-      const { state, score } = healthService.calculateHealthState(data);
-      setHealthState(state);
-      setHealthScore(score);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      console.warn('[App] Failed to fetch health data:', msg);
-      setHealthError(msg);
-    } finally {
-      setIsSyncing(false);
-    }
-  }
-
-  async function handleConnectHealth() {
-    setIsConnecting(true);
-    setHealthError(null);
-    try {
-      const granted = await healthService.requestPermissions();
-      if (granted) {
-        setIsHealthConnected(true);
-        localStorage.setItem('ritual_health_connected', 'true');
-        await fetchHealthData();
+      let foundLevel: any = null;
+      let foundChapter: any = null;
+      let searchId = id;
+      if (id === "morning_affirmation" || id === "5-4-3-2-1") searchId = "istok_1";
+      else if (id === "night_journal") searchId = "silence_4";
+      else if (id === "internal_sun") searchId = "energy_3";
+      for (const ch of CHAPTERS) {
+        const lvl = ch.levels.find(l => l.id === searchId);
+        if (lvl) { foundLevel = lvl; foundChapter = ch; break; }
+      }
+      if (foundLevel && foundChapter) {
+        targetArea = "levelPlayer"; targetLevel = foundLevel; targetChapter = foundChapter;
       } else {
-        setHealthError('Доступ к данным здоровья не разрешён. / Health Connect не установлен.');
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Неизвестная ошибка';
-      console.warn('[App] Health connect failed:', msg);
-      setHealthError(msg);
-    } finally {
-      setIsConnecting(false);
-    }
-  }
-
-  const [recommendedPractice, setRecommendedPractice] = useState<Practice>(() => {
-    return ALL_PRACTICES.find(p => p.id === 'physio-sigh') || ALL_PRACTICES[0];
-  });
-
-  // Modal displays
-  const [showNavigator, setShowNavigator] = useState(false);
-  const [showSubscription, setShowSubscription] = useState(false);
-  const [showRingConfigurator, setShowRingConfigurator] = useState(false);
-  const [showHealthDetail, setShowHealthDetail] = useState(false);
-  const [showHeatmapModal, setShowHeatmapModal] = useState(false);
-  const [activeReadingTopic, setActiveReadingTopic] = useState<any>(null);
-  const [childModalOpen, setChildModalOpen] = useState(false);
-
-  // Active exercises states
-  const [activePractice, setActivePractice] = useState<Practice | null>(null);
-
-  // 1. Breathing loop player controls
-  const [breathingPhase, setBreathingPhase] = useState<string>('inhale');
-  const [breathingSecondsLeft, setBreathingSecondsLeft] = useState(4);
-  const [breathingCyclesCompleted, setBreathingCyclesCompleted] = useState(0);
-
-  // 2. Focus timer state
-  const [pomodoroFocusTitle, setPomodoroFocusTitle] = useState('Главный приоритет');
-  const [pomodoroMinutes, setPomodoroFocusMinutes] = useState(25);
-  const [pomodoroSeconds, setPomodoroSeconds] = useState(0);
-  const [pomodoroIsActive, setPomodoroIsActive] = useState(false);
-  const [distractionsCount, setDistractionsCount] = useState(0);
-  const [userCheated, setUserCheated] = useState(false);
-  const [cheatedMessage, setCheatedMessage] = useState(false);
-
-  // 3. Mindful movement (Walk/Run/Bicycle tracker)
-  const [movementType, setMovementType] = useState<'walk' | 'run' | 'bike'>('walk');
-  const [movementIsActive, setMovementIsActive] = useState(false);
-  const [movementTimer, setMovementTimer] = useState(0); // in seconds
-  const [movementDistance, setMovementDistance] = useState(0.0); // in km
-  const [simicatedPace, setSimulatedPace] = useState('6:15');
-
-  // 4. "Свечение" soundscape horizontal player states
-  const [ambientTrackIndex, setAmbientTrackIndex] = useState(0);
-  const [ambientIsPlaying, setAmbientIsPlaying] = useState(false);
-  const [fallbackTimer, setFallbackTimer] = useState(0);
-
-  // History track log
-  const [workoutLogs, setWorkoutLogs] = useState<ActivityLog[]>(() => {
-    const saved = localStorage.getItem('ritual_workout_logs');
-    if (saved) {
-      try { return JSON.parse(saved); } catch {}
-    }
-    return [];
-  });
-
-  // Handle active status block click haptic updates from Today
-  useEffect(() => {
-    localStorage.setItem('ritual_onboarded', JSON.stringify(isOnboarded));
-    localStorage.setItem('ritual_username', userName);
-    localStorage.setItem('ritual_plus_active', JSON.stringify(isPlus));
-    localStorage.setItem('ring_connected', String(ringConnected));
-    localStorage.setItem('ritual_favorites', JSON.stringify(favorites));
-    localStorage.setItem('ritual_achievements', JSON.stringify(achievements));
-    localStorage.setItem('ritual_health_score', JSON.stringify(healthScore));
-    localStorage.setItem('ritual_health_state', healthState);
-    localStorage.setItem('ritual_workout_logs', JSON.stringify(workoutLogs));
-  }, [isOnboarded, userName, isPlus, ringConnected, favorites, achievements, healthScore, healthState, workoutLogs]);
-
-  // Synchronise window focus for cheating check on Focus (Pomodoro) timer
-  useEffect(() => {
-    const handleBlur = () => {
-      if (activePractice?.id === 'uniq-focus' && pomodoroIsActive) {
-        setUserCheated(true);
-        setCheatedMessage(true);
-      }
-    };
-    window.addEventListener('blur', handleBlur);
-    return () => window.removeEventListener('blur', handleBlur);
-  }, [activePractice, pomodoroIsActive]);
-
-  // Native: тёмный статус-бар при запуске
-  useEffect(() => {
-    StatusBar.setStyle({ style: Style.Dark });
-    StatusBar.setBackgroundColor({ color: '#03020c' });
-    StatusBar.setOverlaysWebView({ overlay: false });
-  }, []);
-
-  // Native: перехват аппаратной кнопки «Назад» и свайпа
-  useEffect(() => {
-    const unlisten = CapacitorApp.addListener('backButton', () => {
-      if (activePractice) {
-        setActivePractice(null);
-      } else if (showNavigator) {
-        setShowNavigator(false);
-      } else if (showSubscription) {
-        setShowSubscription(false);
-      } else if (showRingConfigurator) {
-        setShowRingConfigurator(false);
-      } else if (showHealthDetail) {
-        setShowHealthDetail(false);
-      } else if (activeReadingTopic) {
-        setActiveReadingTopic(null);
-      } else if (location.pathname !== '/today') {
-        navigate(-1);
-      } else {
-        CapacitorApp.exitApp();
-      }
-    });
-    return () => { unlisten.then(h => h.remove()); };
-  }, [activePractice, showNavigator, showSubscription, showRingConfigurator, showHealthDetail, activeReadingTopic, location.pathname, navigate]);
-
-  // Breathing loop interval ticking
-  useEffect(() => {
-    let timer: any;
-    if (activePractice?.group === 'Исток' && !activePractice.id.startsWith('uniq')) {
-      const isBox = activePractice.id === 'box-breathing';
-      if (breathingCyclesCompleted < 4) {
-        timer = setInterval(() => {
-          setBreathingSecondsLeft(prev => {
-            if (prev <= 1) {
-              if (isBox) {
-                if (breathingPhase === 'inhale') {
-                  setBreathingPhase('hold_in');
-                  return 4;
-                } else if (breathingPhase === 'hold_in') {
-                  setBreathingPhase('exhale');
-                  return 4;
-                } else if (breathingPhase === 'exhale') {
-                  setBreathingPhase('hold_out');
-                  return 4;
-                } else {
-                  setBreathingPhase('inhale');
-                  setBreathingCyclesCompleted(c => c + 1);
-                  return 4;
-                }
-              } else {
-                if (breathingPhase === 'inhale') {
-                  setBreathingPhase('hold');
-                  return 7; // 4-7-8 hold
-                } else if (breathingPhase === 'hold') {
-                  setBreathingPhase('exhale');
-                  return 8; // 4-7-8 exhale
-                } else {
-                  setBreathingPhase('inhale');
-                  setBreathingCyclesCompleted(c => c + 1);
-                  return 4; // 4-7-8 inhale
-                }
-              }
+        const g = group || "Исток";
+        const rituals = RITUALS_DATA[g];
+        if (rituals) {
+          const found = rituals.find(r => r.id === id);
+          if (found) {
+            targetArea = "ritualPlayer"; targetRitualData = found;
+          } else {
+            for (const grp of Object.values(RITUALS_DATA)) {
+              const r = grp.find(item => item.id === id);
+              if (r) { targetArea = "ritualPlayer"; targetRitualData = r; break; }
             }
-            return prev - 1;
-          });
-        }, 1000);
-      } else {
-        // Complete practice
-        handleFinishPractice(activePractice.name, activePractice.duration);
+          }
+        }
+        if (!targetRitualData) {
+          targetArea = "levelPlayer"; targetLevel = CHAPTERS[0].levels[0]; targetChapter = CHAPTERS[0];
+        }
       }
     }
-    return () => clearInterval(timer);
-  }, [activePractice, breathingPhase, breathingCyclesCompleted]);
-
-  // Focus Pomodoro timer tick interval
-  useEffect(() => {
-    let interval: any;
-    if (activePractice?.id === 'uniq-focus' && pomodoroIsActive) {
-      interval = setInterval(() => {
-        if (pomodoroSeconds > 0) {
-          setPomodoroSeconds(prev => prev - 1);
-        } else if (pomodoroMinutes > 0) {
-          setPomodoroFocusMinutes(prev => prev - 1);
-          setPomodoroSeconds(59);
-        } else {
-          // completed pomodoro focus block!
-          setPomodoroIsActive(false);
-          handleFinishPractice(`Фокус: ${pomodoroFocusTitle}`, `${25 - pomodoroMinutes} минут`);
-        }
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [activePractice, pomodoroIsActive, pomodoroMinutes, pomodoroSeconds]);
-
-  // Fallback timer for Тишина/Энергия/Ясность practices
-  useEffect(() => {
-    let interval: any;
-    if (activePractice && activePractice.group !== 'Исток' && !activePractice.id.startsWith('uniq')) {
-      setFallbackTimer(0);
-      interval = setInterval(() => {
-        setFallbackTimer(prev => prev + 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [activePractice]);
-
-  // Mindful Movement dynamic simulation timers
-  useEffect(() => {
-    let interval: any;
-    if (activePractice?.id === 'uniq-movement' && movementIsActive) {
-      interval = setInterval(() => {
-        setMovementTimer(prev => prev + 1);
-        setMovementDistance(prev => {
-          const paceMap = movementType === 'run' ? 0.003 : movementType === 'bike' ? 0.007 : 0.0015;
-          return parseFloat((prev + paceMap).toFixed(3));
-        });
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [activePractice, movementIsActive, movementType]);
-
-  const handleToggleFavorite = (id: string) => {
-    if (favorites.includes(id)) {
-      setFavorites(favorites.filter(fav => fav !== id));
+    setActiveTab("practice");
+    setPracticeActiveArea(targetArea);
+    setPracticeSelectedLevel(targetLevel);
+    setPracticeSelectedChapter(targetChapter);
+    setPracticeSelectedRitualData(targetRitualData);
+    if (targetRitualData) {
+      triggerToast("Ритуал запущен", `«${targetRitualData.title}»`);
+    } else if (targetLevel) {
+      triggerToast("Действие запущено", `Направляем вас в практику: ${targetLevel.title}`);
     } else {
-      setFavorites([...favorites, id]);
+      triggerToast("Действие запущено", targetArea === "movement" ? "Осознанное Движение" : targetArea === "focus" ? "Фокус Внимания" : "Аудио Свечение");
     }
   };
 
-  const handleOpenStores = () => {
-    setShowRingConfigurator(true);
+  const handleToggleHealthConnect = async () => {
+    if (profile.isHealthConnectConnected) {
+      setProfile((prev) => ({ ...prev, isHealthConnectConnected: false }));
+      return;
+    }
+    const granted = await HealthService.requestPermissions();
+    if (granted) {
+      const healthMetrics = await HealthService.fetchCurrentMetrics();
+      setMetrics((m) => ({
+        ...m,
+        score: Math.min(100, Math.round((healthMetrics.heartRate ? 100 - Math.abs(healthMetrics.heartRate - 70) : m.score) + (healthMetrics.steps > 5000 ? 10 : 0))),
+        restingHeartRate: healthMetrics.heartRate || m.restingHeartRate,
+        activitySteps: healthMetrics.steps || m.activitySteps,
+        bodyTemperature: healthMetrics.bodyTemperature ?? m.bodyTemperature,
+        spo2: healthMetrics.spo2 ?? m.spo2,
+      }));
+      setProfile((prev) => ({ ...prev, isHealthConnectConnected: true }));
+      triggerToast("Health Connect подключён", "Данные синхронизированы");
+      HealthService.syncWithBackend(profile.name || "user", healthMetrics);
+    } else {
+      triggerToast("Доступ не предоставлен", "Проверьте настройки Health Connect");
+    }
   };
 
-  // Launch pre-specified practice
-  const handleStartPracticeSelect = (practice: Practice) => {
-    setActivePractice(practice);
-    
-    // reset practice specific states
-    setBreathingPhase('inhale');
-    setBreathingSecondsLeft(4);
-    setBreathingCyclesCompleted(0);
-
-    setPomodoroIsActive(false);
-    setPomodoroFocusMinutes(25);
-    setPomodoroSeconds(0);
-    setDistractionsCount(0);
-    setUserCheated(false);
-    setCheatedMessage(false);
-
-    setMovementIsActive(false);
-    setMovementTimer(0);
-    setMovementDistance(0.0);
-
-    setAmbientIsPlaying(false);
-  };
-
-  // Finish practice correctly updating user stats and unlocking achievements
-  const handleFinishPractice = (title: string, durationStr: string) => {
-    // update statistics
-    setStats(prev => {
-      const isNewStreak = prev.daysStreak < 4 ? prev.daysStreak + 1 : prev.daysStreak;
-      return {
-        daysPractice: prev.daysPractice + 1,
-        ritualsCompleted: prev.ritualsCompleted + 1,
-        daysStreak: isNewStreak
-      };
+  const triggerMockDataConnection = (type: "apple" | "google" | "ring") => {
+    setProfile((prev) => {
+      let update: Partial<UserProfile> = {};
+      if (type === "apple") {
+        update = { isAppleHealthConnected: !prev.isAppleHealthConnected };
+        if (!prev.isAppleHealthConnected) setMetrics((m) => ({ ...m, score: 92, status: "сияешь" }));
+      } else if (type === "google") update = { isGoogleFitConnected: !prev.isGoogleFitConnected };
+      else update = { isCoreRingConnected: !prev.isCoreRingConnected };
+      return { ...prev, ...update };
     });
-
-    // append to workout logs
-    const now = new Date();
-    const newLog: ActivityLog = {
-      id: Date.now().toString(),
-      type: activePractice?.id === 'uniq-movement' ? 'walk' : 'audio',
-      date: now.toISOString(),
-      durationMinutes: activePractice?.id === 'uniq-movement' ? Math.floor(movementTimer / 60) || 1 : 5,
-      distanceKm: activePractice?.id === 'uniq-movement' ? movementDistance : undefined,
-      selectedState: healthState,
-      cheated: userCheated,
-      practiceName: activePractice?.name || title
-    };
-    setWorkoutLogs([newLog, ...workoutLogs]);
-
-    // trigger success level triggers / achievements
-    setAchievements(prev => {
-      return prev.map(ach => {
-        if (ach.id === 'first_spark') {
-          return { ...ach, unlocked: true };
-        }
-        if (ach.id === 'first_week' && stats.ritualsCompleted + 1 >= 7) {
-          return { ...ach, unlocked: true };
-        }
-        return ach;
-      });
-    });
-
-    // Close practice sheet and navigate back to progress or today
-    setActivePractice(null);
   };
 
-  // Apply AI speech recommendations directly
-  const handleApplyAIRecommendation = (rec: any) => {
-    // set health states dynamically
-    setHealthState(rec.state);
-    setHealthScore(rec.state === 'Overload' ? 32 : rec.state === 'Tension' ? 51 : 88);
-
-    // update recommended practice card
-    const targetPractice: Practice = {
-      id: rec.ritualName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
-      name: rec.ritualName,
-      group: rec.ritualGroup,
-      duration: rec.duration.replace(/:/g, '.'),
-      category: rec.phrase,
-      scientificBase: rec.reason,
-      howItWorks: rec.instructions,
-      result: 'Восстановление ясной позиции',
-      isUnlocked: true
-    };
-    setRecommendedPractice(targetPractice);
-    navigate('/today');
-  };
-
-  // Soundscapes horizontal library
-  const SOUNDSCAPES = [
-    { name: 'Фокус Альфа', desc: 'Бинауральный гул 40 Гц для лучшей глубины когнитивной концентрации.', color: 'from-cyan-900 to-slate-900' },
-    { name: 'Поток Энергии', desc: 'Изохронные тоны 18 Гц порождают утреннюю бодрость без кофеина.', color: 'from-orange-950 to-slate-950' },
-    { name: 'Расслабление Сердца', desc: 'Альфа-волны 10 Гц растворяют фоновую суету и навязчивые мысли.', color: 'from-[#7A9BBA]/40 to-slate-950' },
-    { name: 'Сон Тета', desc: 'Глубокий целебный резонанс 30 Гц стимулирует блуждающий нерв в ночь.', color: 'from-purple-950 to-slate-950' },
-    { name: 'Тишина Свечи', desc: 'Естественный тихий треск сандаловой свечи и теплая тишина тибетских чаш.', color: 'from-amber-950 to-slate-950' },
-    { name: 'Восстановление ВСР', desc: 'Ритмичные низкочастотные волны для стимуляции вегетативной системы.', color: 'from-teal-950 to-slate-950' }
-  ];
-
-  // Dynamic Background style filters
-  const getBackgroundStyle = () => {
-    switch (background) {
-      case 'sky':
-        return 'bg-gradient-to-tr from-[#02030a] via-[#06041c] to-[#0a1128]';
-      case 'aurora':
-        return 'bg-gradient-to-tr from-[#020503] via-[#041c10] to-[#0a2818]';
-      default:
-        return 'bg-gradient-to-tr from-[#03020c] via-[#070b16] to-[#091823]';
-    }
-  };
-
-  const getBackgroundCircleGlow = () => {
-    switch (background) {
-      case 'sky':
-        return 'bg-purple-500/10';
-      case 'aurora':
-        return 'bg-emerald-500/10';
-      default:
-        return 'bg-cyan-500/10';
-    }
-  };
+  if (!onboardingComplete) return <Onboarding onComplete={handleOnboardingComplete} />;
 
   return (
-    <AnimatePresence mode="wait">
-      {!isOnboarded ? (
-        <motion.div
-          key="onboarding"
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.25 }}
-        >
-          <Onboarding onComplete={() => setIsOnboarded(true)} />
-        </motion.div>
-      ) : (
-        <motion.div
-          key="app"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.35 }}
-          className={`w-full h-dvh ${getBackgroundStyle()} text-white font-sans overflow-hidden relative flex flex-col selection:bg-amber-400 selection:text-black pt-[max(env(safe-area-inset-top),0px)]`}>
-      
-      {/* Background Soft Glow Orbs */}
-      <div className={`absolute top-24 left-[15%] w-72 h-72 rounded-full ${getBackgroundCircleGlow()} blur-3xl pointer-events-none z-0`} />
-      <div className={`absolute bottom-32 right-[10%] w-80 h-80 rounded-full ${getBackgroundCircleGlow()} blur-3xl pointer-events-none z-0`} />
+    <div className="fixed inset-0 overflow-hidden flex flex-col px-6 pt-10 pb-0 transition-colors duration-[1.5s] bg-[#07070A]">
+      <GlobalVisualBackdrop activeBg={profile.activeBg} />
 
-      {/* Main tab viewer container */}
-      <main className="w-full flex-1 max-w-md mx-auto z-10 relative pb-10 overflow-y-auto min-h-0 scrollbar-none">
-        <AnimatePresence mode="wait">
-          {activeTab === 'today' && (
-            <motion.div 
-              key="today"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.35, ease: "easeOut" }}
-            >
-              <TodayView 
-                healthState={healthState}
-                healthScore={healthScore}
-                userName={userName}
-                isPlus={isPlus}
-                onOpenProfile={() => navigate('/profile')}
-                onOpenPlus={() => setShowSubscription(true)}
-                onOpenHealthDetail={() => setShowHealthDetail(true)}
-                onStartPractice={handleStartPracticeSelect}
-                background={background}
-                onChangeBg={(bg) => setBackground(bg)}
-                recommendedPractice={recommendedPractice}
-                setRecommendedPractice={setRecommendedPractice}
-                practiceLogs={workoutLogs}
-                onOpenArticle={(art) => setActiveReadingTopic(art)}
-                isHealthConnected={isHealthConnected}
-                isConnecting={isConnecting}
-                isSyncing={isSyncing}
-                onConnectHealth={handleConnectHealth}
-                realHealthData={realHealthData}
-                healthError={healthError}
-                onDismissError={() => setHealthError(null)}
-              />
-            </motion.div>
-          )}
-
-          {activeTab === 'practices' && (
-            <motion.div 
-              key="practices"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.35 }}
-            >
-              <PracticesView 
-                isPlus={isPlus}
-                favorites={favorites}
-                onToggleFavorite={handleToggleFavorite}
-                onStartPractice={handleStartPracticeSelect}
-                onOpenPlus={() => setShowSubscription(true)}
-                currentLevel={stats.ritualsCompleted + 1}
-                onModalOpenChange={setChildModalOpen}
-              />
-            </motion.div>
-          )}
-
-          {activeTab === 'progress' && (
-            <motion.div 
-              key="progress"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.35 }}
-            >
-              <ProgressView 
-                stats={stats}
-                achievements={achievements}
-                healthState={healthState}
-                onOpenPlus={() => setShowSubscription(true)}
-                onOpenStore={handleOpenStores}
-                onOpenArticle={(art) => setActiveReadingTopic(art)}
-                practiceLogs={workoutLogs}
-                onOpenHeatmap={() => setShowHeatmapModal(true)}
-              />
-            </motion.div>
-          )}
-
-          {activeTab === 'profile' && (
-            <motion.div 
-              key="profile"
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
-              className="p-6 space-y-6 flex flex-col pt-8"
-            >
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold font-mono">Профиль Личности</h2>
-                <button 
-                  onClick={() => navigate('/today')}
-                  className="w-8 h-8 rounded-full bg-white/5 active:scale-95 flex items-center justify-center text-white/50"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Section 1: Avatar editing */}
-              <div className="flex items-center space-x-4 bg-white/[0.02] border border-white/[0.05] rounded-3xl p-5">
-                <div className="w-16 h-16 rounded-full border-2 border-[#E6B85C]/60 bg-gradient-to-tr from-purple-400 to-[#E6B85C] flex items-center justify-center text-black font-extrabold text-lg shadow-lg">
-                  {userName.substring(0, 1).toUpperCase()}
-                </div>
-                <div className="flex flex-col flex-1">
-                  <input 
-                    type="text" 
-                    value={userName}
-                    onChange={(e) => setUserName(e.target.value)}
-                    className="bg-transparent border-b border-transparent hover:border-white/20 focus:border-[#E6B85C] focus:outline-none text-white text-base font-medium py-0.5 tracking-wide max-w-[200px]"
-                  />
-                  <span className="text-[10px] text-white/40 font-mono uppercase mt-0.5">Владелец Кристалла</span>
-                </div>
-              </div>
-
-              {/* Section 2: Ring connection status */}
-              <div className="bg-white/[0.02] border border-white/[0.06] rounded-3xl p-5 flex flex-col space-y-4">
-                <div className="flex justify-between items-center">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-white/30 font-mono tracking-wider uppercase">ОБОРУДОВАНИЕ</span>
-                    <h3 className="text-sm font-medium text-white/90">Ritual Inside Smart Ring</h3>
-                  </div>
-                  <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-mono ${ringConnected ? 'bg-cyan-500/10 text-cyan-400' : 'bg-white/5 text-white/40'}`}>
-                    {ringConnected ? 'Подключено 78%' : 'Не подключено'}
-                  </span>
-                </div>
-
-                {ringConnected ? (
-                  <div className="text-xs text-white/50 leading-relaxed font-sans flex flex-col space-y-2">
-                    <div className="flex justify-between text-[11px] font-mono">
-                      <span>Материал:</span>
-                      <span className="text-white">{ringConfig.shell}</span>
-                    </div>
-                    <div className="flex justify-between text-[11px] font-mono">
-                      <span>Код гравировки:</span>
-                      <span className="text-amber-300 font-bold">{ringConfig.engraving}</span>
-                    </div>
-                  </div>
-                ) : (
-                  <button 
-                    onClick={() => setShowRingConfigurator(true)}
-                    className="w-full py-2.5 rounded-xl bg-cyan-400 text-black font-bold text-xs active:scale-95 transition"
-                  >
-                    Подключить Ritual Core
-                  </button>
-                )}
-              </div>
-
-              {/* Section 3: Subscription terms */}
-              <div 
-                onClick={() => setShowSubscription(true)}
-                className="bg-white/[0.02] border border-white/[0.06] rounded-3xl p-5 cursor-pointer hover:bg-white/[0.04] transition flex justify-between items-center"
-              >
-                <div className="flex flex-col space-y-1">
-                  <span className="text-[10px] text-[#E6B85C] font-mono uppercase tracking-widest">Ritual Plus</span>
-                  <p className="text-xs text-white/50 leading-snug">Полная нейробиологическая библиотека практик активна круглый год.</p>
-                </div>
-                <ChevronRight className="w-5 h-5 text-white/30" />
-              </div>
-
-              {/* Details sections feedback */}
-              <div className="flex flex-col space-y-1 text-center py-4 select-text">
-                <span className="text-[9px] font-mono text-white/20 uppercase">Ritual system v1.2</span>
-                <span className="text-[9px] font-mono text-cyan-400/40">dmitriyganushak@gmail.com</span>
-                <button 
-                  onClick={() => setIsOnboarded(false)}
-                  className="text-[10px] font-mono text-rose-400/50 hover:text-rose-400 underline pt-4"
-                >
-                  Сбросить онбординг и начать заново
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </main>
-
-      {/* Embedded Practice Loops Fullscreen Overlay Player */}
-      <AnimatePresence>
-        {activePractice && (
-          <div className="fixed inset-0 bg-[#060814] z-55 flex flex-col justify-between p-6 pointer-events-auto overflow-y-auto">
-            
-            {/* Top Close trigger */}
-            <div className="flex justify-between items-center w-full max-w-sm mx-auto pt-4">
-              <span className="text-xs font-mono text-white/40 uppercase tracking-widest px-2.5 py-0.5 rounded-full border border-white/5 bg-white/5">
-                {activePractice.group} практикуется
-              </span>
-              <button 
-                onClick={() => setActivePractice(null)}
-                className="w-10 h-10 rounded-full bg-white/5 active:scale-95 flex items-center justify-center text-white/50"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Content Switch block */}
-            <div className="flex-1 w-full max-w-sm mx-auto flex flex-col justify-center items-center py-8">
-              
-              {/* Scenario 1: standard 4-7-8 deep breathing guide */}
-              {activePractice.group === 'Исток' && !activePractice.id.startsWith('uniq') && (
-                <div className="flex flex-col items-center text-center space-y-8 w-full p-4">
-                  {activePractice.id === 'box-breathing' ? (
-                    (() => {
-                      const progress = (4 - breathingSecondsLeft) / 4;
-                      let cx = 20;
-                      let cy = 20;
-                      if (breathingPhase === 'inhale') {
-                        cx = 20 + progress * 160;
-                        cy = 20;
-                      } else if (breathingPhase === 'hold_in') {
-                        cx = 180;
-                        cy = 20 + progress * 160;
-                      } else if (breathingPhase === 'exhale') {
-                        cx = 180 - progress * 160;
-                        cy = 180;
-                      } else if (breathingPhase === 'hold_out') {
-                        cx = 20;
-                        cy = 180 - progress * 160;
-                      }
-                      
-                      return (
-                        <div className="flex flex-col items-center text-center space-y-8 w-full">
-                          {/* Geometric Square Path */}
-                          <div className="relative w-64 h-64 flex items-center justify-center">
-                            {/* Ambient colorful pulsing blur */}
-                            <motion.div 
-                              animate={{ 
-                                scale: breathingPhase === 'inhale' ? [1, 1.4, 1.4, 1] : 1,
-                                opacity: [0.15, 0.35, 0.35, 0.15]
-                              }}
-                              transition={{ repeat: Infinity, duration: 16 }}
-                              className="w-40 h-40 rounded-[48px] bg-gradient-to-r from-teal-400/20 to-indigo-500/20 blur-2xl absolute"
-                            />
-                            
-                            {/* Inner Breathing Circle pulsing */}
-                            <motion.div 
-                              animate={{ 
-                                scale: breathingPhase === 'inhale' ? 1.25 : breathingPhase === 'hold_in' ? 1.25 : 0.9
-                              }}
-                              transition={{ duration: 4, ease: "easeInOut" }}
-                              className="w-28 h-28 rounded-full bg-slate-950/60 border border-white/10 flex flex-col items-center justify-center relative backdrop-blur-md z-10"
-                            >
-                              <span className="text-[10px] font-mono tracking-widest text-white/30 uppercase">секунд</span>
-                              <h3 className="text-3xl font-extrabold font-mono text-white mt-1">{breathingSecondsLeft}</h3>
-                            </motion.div>
-
-                            {/* SVG Track representing the actual breathing square */}
-                            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 200 200">
-                              {/* Background default square */}
-                              <rect x="20" y="20" width="160" height="160" rx="32" fill="none" stroke="rgba(255, 255, 255, 0.05)" strokeWidth="4" />
-                              
-                              {/* Animated active path */}
-                              <rect x="20" y="20" width="160" height="160" rx="32" fill="none" 
-                                stroke={
-                                  breathingPhase === 'inhale' ? 'url(#grad-teal)' :
-                                  breathingPhase === 'hold_in' ? 'url(#grad-amber)' :
-                                  breathingPhase === 'exhale' ? 'url(#grad-blue)' :
-                                  'url(#grad-purple)'
-                                } 
-                                strokeWidth="4" 
-                                strokeDasharray="640"
-                                strokeDashoffset={
-                                  breathingPhase === 'inhale' ? 640 - progress * 160 :
-                                  breathingPhase === 'hold_in' ? 480 - progress * 160 :
-                                  breathingPhase === 'exhale' ? 320 - progress * 160 :
-                                  160 - progress * 160
-                                }
-                                strokeLinecap="round"
-                              />
-
-                              {/* Glowing Target Sphere */}
-                              <circle 
-                                cx={cx} 
-                                cy={cy} 
-                                r="8" 
-                                fill={
-                                  breathingPhase === 'inhale' ? '#2dd4bf' :
-                                  breathingPhase === 'hold_in' ? '#fbbf24' :
-                                  breathingPhase === 'exhale' ? '#60a5fa' :
-                                  '#c084fc'
-                                }
-                                style={{ filter: 'drop-shadow(0px 0px 8px currentColor)' }}
-                              />
-                              
-                              {/* Definitions for gorgeous gradients */}
-                              <defs>
-                                <linearGradient id="grad-teal" x1="0%" y1="0%" x2="100%" y2="0%">
-                                  <stop offset="0%" stopColor="#0d9488" stopOpacity="0.2" />
-                                  <stop offset="100%" stopColor="#2dd4bf" />
-                                </linearGradient>
-                                <linearGradient id="grad-amber" x1="100%" y1="0%" x2="100%" y2="100%">
-                                  <stop offset="0%" stopColor="#d97706" stopOpacity="0.2" />
-                                  <stop offset="100%" stopColor="#fbbf24" />
-                                </linearGradient>
-                                <linearGradient id="grad-blue" x1="100%" y1="100%" x2="0%" y2="100%">
-                                  <stop offset="0%" stopColor="#2563eb" stopOpacity="0.2" />
-                                  <stop offset="100%" stopColor="#60a5fa" />
-                                </linearGradient>
-                                <linearGradient id="grad-purple" x1="0%" y1="100%" x2="0%" y2="0%">
-                                  <stop offset="0%" stopColor="#7c3aed" stopOpacity="0.2" />
-                                  <stop offset="100%" stopColor="#c084fc" />
-                                </linearGradient>
-                              </defs>
-                            </svg>
-                          </div>
-
-                          <div className="flex flex-col space-y-1 py-1 z-10 select-none">
-                            <span className="text-base font-semibold tracking-wide text-amber-200">
-                              {breathingPhase === 'inhale' && 'Вдох носом • Живот надувается'}
-                              {breathingPhase === 'hold_in' && 'Задержка • Легкие полны покоя'}
-                              {breathingPhase === 'exhale' && 'Выдох ртом • Полное расслабление'}
-                              {breathingPhase === 'hold_out' && 'Задержка • Приятная пустота'}
-                            </span>
-                            <span className="text-xs text-white/40 font-mono uppercase tracking-widest">Цикл {breathingCyclesCompleted + 1} из 4</span>
-                          </div>
-                        </div>
-                      )
-                    })()
-                  ) : (
-                    <>
-                      {/* Animating breathing circle */}
-                      <div className="relative w-64 h-64 flex items-center justify-center">
-                        <motion.div 
-                          animate={{ 
-                            scale: breathingPhase === 'inhale' ? 1.5 : breathingPhase === 'hold' ? 1.5 : 0.95
-                          }}
-                          transition={{ 
-                            duration: breathingPhase === 'inhale' ? 4 : breathingPhase === 'hold' ? 0.1 : 8,
-                            ease: "easeInOut"
-                          }}
-                          className="w-36 h-32 rounded-full bg-gradient-to-r from-amber-400/20 to-purple-400/20 blur-xl absolute"
-                        />
-
-                        <motion.div 
-                          animate={{ 
-                            scale: breathingPhase === 'inhale' ? 1.4 : breathingPhase === 'hold' ? 1.4 : 0.95
-                          }}
-                          transition={{ 
-                            duration: breathingPhase === 'inhale' ? 4 : breathingPhase === 'hold' ? 0.1 : 8,
-                            ease: "easeInOut"
-                          }}
-                          className="w-36 h-36 rounded-full border-2 border-amber-400/30 flex items-center justify-center"
-                        >
-                          <h3 className="text-4xl font-bold font-mono text-white tracking-widest">{breathingSecondsLeft}</h3>
-                        </motion.div>
-                      </div>
-
-                      <div className="flex flex-col space-y-1">
-                        <span className="text-md uppercase font-mono tracking-widest text-[#E6B85C]">
-                          {breathingPhase === 'inhale' && 'Вдох носом (Раз, два...)'}
-                          {breathingPhase === 'hold' && 'Задержка (Все замерло)'}
-                          {breathingPhase === 'exhale' && 'Выдох облегчения («ха»)'}
-                        </span>
-                        <span className="text-xs text-white/40 font-mono">Цикл {breathingCyclesCompleted + 1} из 4</span>
-                      </div>
-                    </>
-                  )}
-
-                  <p className="text-xs text-white/50 leading-relaxed font-sans max-w-[280px]">
-                    {activePractice.howItWorks || 'Синхронизируйте дыхание с ритмичной геометрией квадрата.'}
-                  </p>
-                </div>
-              )}
-
-              {/* Scenario 2: Unique Mindful Movement selector / active tracker */}
-              {activePractice.id === 'uniq-movement' && (
-                <div className="flex flex-col space-y-6 w-full p-4">
-                  {movementIsActive ? (
-                    <div className="flex flex-col items-center space-y-6 text-center">
-                      {/* Interactive Radar stepping circle */}
-                      <div className="relative w-48 h-48 flex items-center justify-center">
-                        <motion.div 
-                          animate={{ 
-                            scale: [1, 1.15, 1],
-                            opacity: [0.15, 0.4, 0.15]
-                          }}
-                          transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
-                          className="absolute inset-0 rounded-full bg-[#E67E22]/10 border border-[#E67E22]/20"
-                        />
-                        <div className="absolute w-36 h-36 rounded-full border border-white/5 flex items-center justify-center bg-slate-950/20">
-                          <Compass className="w-10 h-10 text-[#E67E22] animate-spin-slow" />
-                        </div>
-                        
-                        {/* Animated footing circles */}
-                        <motion.div 
-                          animate={{ 
-                            scale: [0.8, 1.3, 0.8],
-                            opacity: [0.3, 0.8, 0.3]
-                          }}
-                          transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
-                          className="absolute w-6 h-6 rounded-full border border-[#E67E22] bg-[#E67E22]/20 shadow shadow-orange-500/30" 
-                        />
-                      </div>
-
-                      <div className="flex flex-col select-none">
-                        <span className="text-[10px] text-white/40 tracking-widest font-mono uppercase">Дистанция</span>
-                        <h4 className="text-5xl font-mono font-bold tracking-tight text-white mb-1">{movementDistance} км</h4>
-                        <span className="text-xs text-[#E67E22] font-mono tracking-wider">ОСОЗНАННЫЙ МЕРНЫЙ ШАГ</span>
-                      </div>
-
-                      {/* Mindful stepping breath syncer */}
-                      <div className="p-4 bg-slate-950/50 border border-white/5 rounded-3xl w-full text-center space-y-2">
-                        <span className="text-[9px] font-mono text-amber-200 uppercase tracking-widest">Дыхание по шагам (Вдох 4 — Выдох 4)</span>
-                        <div className="flex justify-center items-center space-x-6">
-                          <motion.div
-                            animate={{ opacity: [0.4, 1, 0.4] }}
-                            transition={{ repeat: Infinity, duration: 4, times: [0, 0.5, 1] }}
-                            className="flex items-center space-x-1.5"
-                          >
-                            <span className="text-xs text-white/50">Вдох:</span>
-                            <span className="text-xs font-semibold text-[#E67E22] tracking-wider">● ● ● ●</span>
-                          </motion.div>
-                          <motion.div
-                            animate={{ opacity: [1, 0.4, 1] }}
-                            transition={{ repeat: Infinity, duration: 4, times: [0, 0.5, 1] }}
-                            className="flex items-center space-x-1.5"
-                          >
-                            <span className="text-xs text-white/50">Выдох:</span>
-                            <span className="text-xs font-semibold text-teal-400 tracking-wider">● ● ● ●</span>
-                          </motion.div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4 w-full">
-                        <div className="p-3 bg-white/5 border border-white/5 rounded-2xl text-center">
-                          <span className="text-[9px] font-mono text-white/30 uppercase">Время в пути</span>
-                          <span className="text-sm font-semibold font-mono text-white mt-1 block">
-                            {Math.floor(movementTimer / 60)}:{(movementTimer % 60).toString().padStart(2, '0')}
-                          </span>
-                        </div>
-                        <div className="p-3 bg-white/5 border border-white/5 rounded-2xl text-center">
-                          <span className="text-[9px] font-mono text-white/30 uppercase">Текущий темп</span>
-                          <span className="text-sm font-semibold font-mono text-white mt-1 block">{simicatedPace} м/км</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <Heart className="w-4 h-4 text-rose-500 animate-ping" />
-                        <span className="text-xs font-mono text-white/50">ЧСС (Сенсор): 118 уд/мин</span>
-                      </div>
-
-                      <button 
-                        onClick={() => {
-                          handleFinishPractice('Движение', `${Math.floor(movementTimer / 60)} мин`);
-                        }}
-                        className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold text-xs shadow-lg shadow-orange-500/20 active:scale-95 transition"
-                      >
-                        Завершить прогулку
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col space-y-4">
-                      <h3 className="text-lg font-bold text-center text-white/95">Осознанное движение</h3>
-                      <p className="text-xs text-center text-white/50 leading-relaxed max-w-[280px] mx-auto">
-                        Прогулка, бег или велосипед возвращают внимание в тело сквозь мерный шаг. Выберите тип:
-                      </p>
-
-                      <div className="grid grid-cols-3 gap-2 py-4">
-                        {(['walk', 'run', 'bike'] as any[]).map((type) => (
-                           <button 
-                            key={type}
-                            onClick={() => {
-                              setMovementType(type);
-                              setSimulatedPace(type === 'run' ? '5:10' : type === 'bike' ? '18 км/ч' : '9:30');
-                            }}
-                            className={`p-3 rounded-2xl border text-center transition flex flex-col items-center justify-center space-y-2 ${movementType === type ? 'border-[#E67E22] bg-[#E67E22]/10 text-white' : 'border-white/5 bg-white/5 text-white/60'}`}
-                          >
-                            <span className="text-[10px] font-mono uppercase font-semibold">{type === 'walk' ? 'Пешком' : type === 'run' ? 'Бег' : 'Вело'}</span>
-                          </button>
-                        ))}
-                      </div>
-
-                      <button
-                        onClick={() => {
-                          setMovementIsActive(true);
-                          setMovementTimer(0);
-                        }}
-                        className="w-full py-3.5 rounded-2xl bg-white text-black font-semibold text-xs active:scale-95 transition"
-                      >
-                        Начать прогулку
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Scenario 3: Unique Focus countdown clock */}
-              {activePractice.id === 'uniq-focus' && (
-                <div className="flex flex-col space-y-6 w-full p-4 select-none">
-                  {pomodoroIsActive ? (
-                    <div className="flex flex-col items-center space-y-6 text-center">
-                      
-                      {/* Circular Dynamic Dial */}
-                      <div className="relative w-56 h-56 flex items-center justify-center">
-                        {/* Waving fluid backdrop inside */}
-                        <motion.div 
-                          animate={{ 
-                            scale: [1, 1.12, 1],
-                            opacity: [0.3, 0.45, 0.3],
-                            rotate: 360
-                          }}
-                          transition={{ repeat: Infinity, duration: 12, ease: "linear" }}
-                          className="absolute w-44 h-44 rounded-[50%] bg-gradient-to-tr from-cyan-500/10 via-teal-500/5 to-purple-500/10 blur-xl pointer-events-none"
-                        />
-                        
-                        {/* Elegant Countdown Value */}
-                        <div className="relative z-10 flex flex-col items-center justify-center">
-                          <Eye className="w-5 h-5 text-[#A8D5E5] animate-pulse mb-1" />
-                          <h2 className="text-4xl font-extrabold font-mono text-white tracking-widest">
-                            {pomodoroMinutes.toString().padStart(2, '0')}:{pomodoroSeconds.toString().padStart(2, '0')}
-                          </h2>
-                          <span className="text-[9px] font-mono uppercase tracking-wider text-white/30 mt-1">Осталось минут</span>
-                        </div>
-
-                        {/* Dial SVG Track */}
-                        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 200 200">
-                          {/* Inner circle track */}
-                          <circle cx="100" cy="100" r="82" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="4" />
-                          {/* Active ticking indicator segment */}
-                          <motion.circle 
-                            cx="100" 
-                            cy="100" 
-                            r="82" 
-                            fill="none" 
-                            stroke="#A8D5E5" 
-                            strokeWidth="4"
-                            strokeDasharray="515"
-                            strokeDashoffset={515 - (515 * (pomodoroMinutes * 60 + pomodoroSeconds)) / (25 * 60 || 1)}
-                            strokeLinecap="round"
-                            transform="rotate(-90 100 100)"
-                            style={{ filter: 'drop-shadow(0 0 4px rgba(168,213,229,0.4))' }}
-                          />
-                        </svg>
-                      </div>
-
-                      <div className="flex flex-col space-y-1">
-                        <span className="text-[10px] uppercase font-mono tracking-widest text-[#A8D5E5]">идёт сессия фокуса</span>
-                        <h4 className="text-base font-semibold text-white/90">{pomodoroFocusTitle}</h4>
-                      </div>
-
-                      {/* I got distracted button */}
-                      <button 
-                        onClick={() => setDistractionsCount(c => c + 1)}
-                        className="px-6 py-2.5 rounded-full bg-slate-950/60 border border-orange-500/20 text-orange-300 text-xs font-semibold active:scale-95 transition shadow-lg flex items-center space-x-2"
-                      >
-                        <span>Я отвлекся!</span>
-                        {distractionsCount > 0 && (
-                          <span className="bg-orange-500 text-black font-extrabold text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-mono">
-                            {distractionsCount}
-                          </span>
-                        )}
-                      </button>
-
-                      {cheatedMessage && (
-                        <div className="p-3.5 bg-rose-500/10 border border-rose-500/15 rounded-2xl text-[10px] text-rose-300 text-center max-w-[260px] leading-relaxed">
-                          ⚠️ Вы свернули приложение — фокус прерван. Субъективная награда Кристалла будет снижена.
-                        </div>
-                      )}
-
-                      <div className="flex space-x-3 w-full pt-2">
-                        <button 
-                          onClick={() => setPomodoroIsActive(!pomodoroIsActive)}
-                          className="flex-1 py-3 rounded-2xl border border-white/10 bg-white/5 text-xs text-white/80 active:scale-95 transition"
-                        >
-                          {pomodoroIsActive ? 'Пауза фокуса' : 'Продолжить'}
-                        </button>
-                        <button 
-                          onClick={() => {
-                            handleFinishPractice(`Фокус: ${pomodoroFocusTitle}`, `${25 - pomodoroMinutes} мин`);
-                          }}
-                          className="flex-1 py-3 bg-[#A8D5E5] text-black font-semibold text-xs rounded-2xl active:scale-95 transition"
-                        >
-                          Завершить сессию
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col space-y-4">
-                      <h3 className="text-lg font-bold text-center text-white/95">Фокус ума</h3>
-                      
-                      <div className="flex flex-col space-y-1.5">
-                        <label className="text-[11px] font-mono text-white/40 uppercase tracking-wider">Что делаем?</label>
-                        <input 
-                          type="text" 
-                          value={pomodoroFocusTitle}
-                          onChange={(e) => setPomodoroFocusTitle(e.target.value)}
-                          className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-xs text-white outline-none focus:border-[#A8D5E5] transition"
-                        />
-                      </div>
-
-                      <div className="flex flex-col space-y-1.5">
-                        <label className="text-[11px] font-mono text-white/40 uppercase tracking-wider">Длительность работы (мин)</label>
-                        <input 
-                          type="number" 
-                          value={pomodoroMinutes}
-                          onChange={(e) => setPomodoroFocusMinutes(Number(e.target.value))}
-                          className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-xs text-white outline-none focus:border-[#A8D5E5] transition"
-                        />
-                      </div>
-
-                      <button 
-                        onClick={() => {
-                          setPomodoroIsActive(true);
-                          setPomodoroSeconds(0);
-                        }}
-                        className="w-full py-3.5 bg-white text-black font-semibold text-xs rounded-2xl active:scale-95 transition shadow-lg"
-                      >
-                        Начать сессию
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Scenario 4: "Свечение" Horizontal audio visualizer */}
-              {activePractice.id === 'uniq-glow' && (
-                <div className="flex flex-col items-center space-y-4 w-full px-2">
-                  {/* Top info */}
-                  <div className="flex flex-col space-y-1 text-center select-none">
-                    <span className="text-[10px] text-[#fbbf24]/60 font-mono tracking-widest uppercase">Медитация Свечения & Звука</span>
-                    <h3 className="text-xl font-bold text-white tracking-wide">{SOUNDSCAPES[ambientTrackIndex].name}</h3>
-                  </div>
-
-                  {/* Pulsing glow aura (always animates to avoid layout shift) */}
-                  <div className="relative w-40 h-40 flex items-center justify-center">
-                    <motion.div 
-                      key={ambientTrackIndex + '-aura'}
-                      animate={{ scale: [1, 1.25, 1], opacity: [0.2, 0.5, 0.2] }}
-                      transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-                      className={`absolute inset-0 rounded-full blur-3xl pointer-events-none ${
-                        ambientTrackIndex === 0 ? 'bg-amber-500/30' :
-                        ambientTrackIndex === 1 ? 'bg-purple-500/30' :
-                        ambientTrackIndex === 2 ? 'bg-emerald-500/30' :
-                        'bg-sky-500/30'
-                      }`}
-                    />
-                    <div className="relative w-28 h-28 flex items-center justify-center">
-                      {ambientTrackIndex === 0 ? (
-                        <div className="relative flex flex-col items-center">
-                          <motion.div
-                            animate={{ scaleY: [1, 1.1, 0.95, 1.05, 1], scaleX: [1, 0.97, 1.05, 0.95, 1] }}
-                            transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-                            className="w-8 h-14 bg-gradient-to-t from-orange-600 via-amber-400 to-amber-100 rounded-t-full shadow-[0_0_20px_rgba(245,158,11,0.5)] z-10"
-                            style={{ borderRadius: "50% 50% 20% 20% / 60% 60% 40% 40%" }}
-                          />
-                          <div className="w-8 h-12 bg-gradient-to-r from-stone-800 to-stone-700/80 rounded-b-xl border-t border-amber-500/20 flex items-center justify-center">
-                            <span className="text-[7px] font-mono text-white/20 uppercase">ЗЕН</span>
-                          </div>
-                          <div className="absolute top-[46px] w-0.5 h-2.5 bg-stone-950 rounded-t-full z-10" />
-                        </div>
-                      ) : (
-                        <motion.div
-                          animate={{ scale: [1, 1.1, 0.97, 1], rotate: [0, 360] }}
-                          transition={{ repeat: Infinity, duration: 10, ease: "linear" }}
-                          className={`w-20 h-20 rounded-full border border-white/20 bg-gradient-to-tr flex items-center justify-center shadow-2xl ${
-                            ambientTrackIndex === 1 ? 'from-purple-600/30 via-pink-500/20 to-violet-900/60' :
-                            ambientTrackIndex === 2 ? 'from-emerald-600/30 via-teal-500/20 to-cyan-900/60' :
-                            'from-sky-600/30 via-blue-500/20 to-indigo-900/60'
-                          }`}
-                        >
-                          <Volume2 className="w-6 h-6 text-white/80" />
-                        </motion.div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Sound bars with deterministic heights (no Math.random) */}
-                  <div className="flex items-end justify-center space-x-1 h-10 w-full max-w-[260px]">
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].map((i) => {
-                      const base = i % 2 === 0 ? 16 : 10;
-                      return (
-                        <motion.div
-                          key={i}
-                          animate={{ height: [base, base + (i % 3) * 8 + 6, base] }}
-                          transition={{
-                            repeat: Infinity,
-                            duration: 0.6 + (i % 4) * 0.15,
-                            ease: "easeInOut",
-                            delay: (i % 5) * 0.08
-                          }}
-                          className={`w-1 rounded-full ${
-                            ambientTrackIndex === 0 ? 'bg-amber-400/70' :
-                            ambientTrackIndex === 1 ? 'bg-purple-400/70' :
-                            ambientTrackIndex === 2 ? 'bg-emerald-400/70' :
-                            'bg-sky-400/70'
-                          }`}
-                        />
-                      );
-                    })}
-                  </div>
-
-                  <p className="text-[11px] text-center text-white/50 px-4 font-sans select-none">
-                    {SOUNDSCAPES[ambientTrackIndex].desc}
-                  </p>
-
-                  {/* Track tabs */}
-                  <div className="flex flex-wrap justify-center gap-2">
-                    {SOUNDSCAPES.map((t, idx) => (
-                      <button 
-                        key={idx}
-                        onClick={() => { setAmbientTrackIndex(idx); }}
-                        className={`shrink-0 px-3 py-1.5 rounded-2xl text-[10.5px] font-mono transition-colors ${
-                          ambientTrackIndex === idx
-                            ? 'bg-white text-black font-semibold'
-                            : 'bg-white/5 text-white/40'
-                        }`}
-                      >
-                        {t.name}
-                      </button>
-                    ))}
-                  </div>
-
-                  <button 
-                    onClick={() => setAmbientIsPlaying(!ambientIsPlaying)}
-                    className="w-full py-3 rounded-2xl bg-white text-black font-semibold text-xs active:scale-95 transition"
-                  >
-                    {ambientIsPlaying ? 'Поставить на паузу' : 'Запустить воспроизведение'}
-                  </button>
-                </div>
-              )}
-
-              {/* Fallback: Тишина / Энергия / Ясность — spectrogram + practice info */}
-              {activePractice.group !== 'Исток' && !activePractice.id.startsWith('uniq') && (
-                <div className="flex flex-col items-center text-center space-y-8 w-full p-4">
-                  <div className="relative w-64 h-64 flex items-center justify-center">
-                    <motion.div
-                      animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.5, 0.2] }}
-                      transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
-                      className={`w-48 h-48 rounded-full blur-3xl absolute pointer-events-none ${
-                        activePractice.group === 'Тишина' ? 'bg-[#7A9BBA]/20' :
-                        activePractice.group === 'Энергия' ? 'bg-[#E67E22]/20' :
-                        'bg-[#A8D5E5]/20'
-                      }`}
-                    />
-                    <motion.div
-                      animate={{ scale: [1, 1.08, 1] }}
-                      transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-                      className={`w-36 h-36 rounded-full border-2 flex items-center justify-center ${
-                        activePractice.group === 'Тишина' ? 'border-[#7A9BBA]/30' :
-                        activePractice.group === 'Энергия' ? 'border-[#E67E22]/30' :
-                        'border-[#A8D5E5]/30'
-                      }`}
-                    >
-                      <span className="text-4xl font-bold font-mono text-white/80">
-                        {String(Math.floor(fallbackTimer / 60)).padStart(2, '0')}:{String(fallbackTimer % 60).padStart(2, '0')}
-                      </span>
-                    </motion.div>
-                  </div>
-                  <div className="flex flex-col space-y-3 max-w-[280px]">
-                    <h3 className="text-[20px] font-display font-medium text-white/95">{activePractice.name}</h3>
-                    <p className="text-xs text-white/50 leading-relaxed font-sans">
-                      {activePractice.howItWorks || activePractice.scientificBase || `Практика группы «${activePractice.group}»`}
-                    </p>
-                    <div className="flex flex-wrap justify-center gap-2 mt-1">
-                      <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-white/5 text-white/40 border border-white/5">
-                        {activePractice.category}
-                      </span>
-                      <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-white/5 text-white/40 border border-white/5">
-                        {activePractice.duration}
-                      </span>
-                    </div>
-                  </div>
-                  {/* Spectrogram bars */}
-                  <div className="flex items-end justify-center space-x-1.5 h-16 w-full max-w-xs">
-                    {Array.from({ length: 20 }).map((_, i) => (
-                      <motion.div
-                        key={i}
-                        animate={{
-                          height: [8, Math.random() * 40 + 8, 8]
-                        }}
-                        transition={{
-                          repeat: Infinity,
-                          duration: 0.6 + i * 0.08,
-                          ease: "easeInOut",
-                          delay: i * 0.12
-                        }}
-                        className={`w-1 rounded-full ${
-                          activePractice.group === 'Тишина' ? 'bg-[#7A9BBA]/50' :
-                          activePractice.group === 'Энергия' ? 'bg-[#E67E22]/50' :
-                          'bg-[#A8D5E5]/50'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Bottom complete practice button trigger */}
-            <div className="w-full max-w-sm mx-auto pb-[max(6px,env(safe-area-inset-bottom,6px))]">
-              <button 
-                onClick={() => {
-                  handleFinishPractice(activePractice.name, activePractice.duration);
-                }}
-                className="w-full py-3.5 rounded-full bg-white/10 hover:bg-white/15 text-white font-semibold text-xs border border-white/10 active:scale-95 transition"
-              >
-                Завершить ритуал полностью
-              </button>
-            </div>
-          </div>
+      <div className="flex-grow overflow-y-auto no-scrollbar w-full max-w-md mx-auto relative z-10 pb-24">
+        {activeTab === "today" && (
+          <TodayTab
+            profile={profile}
+            metrics={metrics}
+            schedule={schedule}
+            onUpdateBg={(bg) => setProfile((p) => ({ ...p, activeBg: bg }))}
+            onLaunchRitual={handleLaunchRitualAndTrack}
+            onToggleScheduleSlot={(id) => {}}
+            onOpenMetricsDetails={() => setShowMetricsDetails(true)}
+            onEditSchedule={() => {}}
+          />
         )}
-      </AnimatePresence>
-
-      {/* Embedded Ritual Health Detailed Screen Bottom Modal */}
-      <HealthDetailsModal 
-        isOpen={showHealthDetail}
-        onClose={() => setShowHealthDetail(false)}
-        healthScore={healthScore}
-        healthData={realHealthData}
-      />
-      <PracticeHistoryModal
-        isOpen={showHeatmapModal}
-        onClose={() => setShowHeatmapModal(false)}
-        practiceLogs={workoutLogs}
-      />
-
-      {/* Global Useful Reading Bottom Sheet Article Reader */}
-      <AnimatePresence>
-        {activeReadingTopic && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-45 flex items-end justify-center pointer-events-auto">
-            {/* Hit space close */}
-            <div className="absolute inset-0" onClick={() => setActiveReadingTopic(null)} />
-
-            <motion.div 
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 220 }}
-              className="w-full max-w-md bg-[#090b14ef] border-t border-white/[0.12] rounded-t-[36px] p-6 pb-[max(12px,env(safe-area-inset-bottom,12px))] z-50 flex flex-col space-y-4 max-h-[90vh] overflow-y-auto"
-            >
-              <div className="flex justify-between items-center border-b border-white/10 pb-4">
-                <div className="flex flex-col">
-                  <span className="text-[10px] uppercase tracking-widest font-mono text-[#E6B85C]">Полезное чтение</span>
-                  <h3 className="text-lg font-bold text-white/95">{activeReadingTopic.title}</h3>
-                </div>
-                <button 
-                  onClick={() => setActiveReadingTopic(null)}
-                  className="w-8 h-8 rounded-full bg-white/5 active:scale-90 flex items-center justify-center text-white/60 hover:text-white"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="text-sm text-white/80 leading-relaxed font-sans space-y-4 pt-2 whitespace-pre-line">
-                {activeReadingTopic.content}
-              </div>
-
-              <div className="pt-4 border-t border-white/5 flex flex-col space-y-0.5">
-                <span className="text-[10px] text-white/40 font-mono">Тема: Attention Recovery</span>
-                <span className="text-[10px] text-white/40 font-mono">В основе материала — нейробиологические исследования ВСР и внимания</span>
-              </div>
-            </motion.div>
-          </div>
+        {activeTab === "practice" && (
+          <PracticeTab
+            completedLevels={completedLevels}
+            isSubscribed={profile.isSubscribed}
+            onLevelComplete={onLevelComplete}
+            onLaunchRitual={handleLaunchRitualAndTrack}
+            onShowToast={triggerToast}
+            forcedActiveArea={practiceActiveArea}
+            forcedSelectedLevel={practiceSelectedLevel}
+            forcedSelectedChapter={practiceSelectedChapter}
+            forcedSelectedRitualData={practiceSelectedRitualData}
+            onClearForced={() => { setPracticeActiveArea(null); setPracticeSelectedLevel(null); setPracticeSelectedChapter(null); setPracticeSelectedRitualData(null); }}
+          />
         )}
-      </AnimatePresence>
+        {activeTab === "progress" && <ProgressTab profile={profile} metrics={metrics} completedLevels={completedLevels} />}
+        {activeTab === "profile" && (
+          <ProfileTab
+            profile={profile}
+            metrics={metrics}
+            completedLevels={completedLevels}
+            onUpdateBg={(bg) => setProfile((p) => ({ ...p, activeBg: bg }))}
+            onLaunchRitual={handleLaunchRitualAndTrack}
+            onUpdateProfileName={(newName) => setProfile((p) => ({ ...p, name: newName }))}
+            onToggleAppleHealth={() => triggerMockDataConnection("apple")}
+            onToggleGoogleFit={() => triggerMockDataConnection("google")}
+            onToggleHealthConnect={handleToggleHealthConnect}
+            onToggleCoreRing={() => triggerMockDataConnection("ring")}
+            onConfigureRing={(mat, eng) => setProfile((p) => ({ ...p, isCustomRingPreordered: true, ringMaterial: mat, ringEngraving: eng }))}
+            onPurchaseSubscription={(sub) => setProfile((p) => ({ ...p, isSubscribed: sub }))}
+            onShowToast={triggerToast}
+          />
+        )}
+      </div>
 
-      {!activePractice && !showHealthDetail && !showNavigator && !showSubscription && !showRingConfigurator && !activeReadingTopic && !childModalOpen && !showHeatmapModal && (
-        <BottomTabBar activeTab={activeTab} onMicPress={() => setShowNavigator(true)} />
+      {showMetricsDetails && (
+        <div className="fixed inset-0 z-50 bg-[#07070A]/90 backdrop-blur-2xl p-6 overflow-y-auto flex justify-center animate-[fade-in_0.5s_ease-out]">
+          <div className="max-w-md w-full space-y-8 pt-14 pb-24 text-left relative">
+            <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full opacity-10 blur-[100px] pointer-events-none"
+              style={{ background: `radial-gradient(circle at center, ${metrics.status === "сияешь" ? "#C9A96E" : metrics.status === "баланс" ? "#7BC47F" : "#D4875E"} 0%, transparent 70%)` }} />
+            <button onClick={() => setShowMetricsDetails(false)}
+              className="absolute right-0 top-0 w-8 h-8 rounded-full flex items-center justify-center text-white/20 hover:text-white/50 transition-colors">✕</button>
+            <div className="space-y-1">
+              <span className="text-[9px] font-mono text-[#C9A96E]/50 uppercase tracking-[0.3em]">Ritual Health Index</span>
+              <h1 className="text-xl font-display font-light text-white/85 text-aura">Монитор здоровья</h1>
+              <p className="text-xs font-editorial italic text-white/20">Детальные показатели за 24 часа</p>
+            </div>
+
+            {/* 8 cards grid */}
+            <div className="grid grid-cols-2 gap-3">
+              {HEALTH_MONITOR_CARDS.map((card) => {
+                const isExpanded = expandedMetric === card.id;
+                const val = String(resolveMetricValue(metrics, card.metricKey));
+                return (
+                  <div key={card.id}
+                    className={`rounded-2xl border border-white/[0.03] overflow-hidden transition-all duration-300 ${isExpanded ? 'col-span-2' : ''}`}
+                    style={{ background: isExpanded ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.015)' }}>
+                    <div onClick={() => setExpandedMetric(isExpanded ? null : card.id)}
+                      className="p-3.5 cursor-pointer select-none">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs opacity-50">{card.icon}</span>
+                        <span className={`text-[7px] font-mono tracking-wider uppercase transition-opacity ${isExpanded ? 'opacity-40' : 'opacity-20'}`}>{isExpanded ? 'свернуть' : 'подробнее'}</span>
+                      </div>
+                      <h4 className="text-[10px] font-mono uppercase tracking-[0.15em] text-white/40 mb-0.5">{card.label}</h4>
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-lg font-display font-light text-white/85">{val}</span>
+                        <span className="text-[8px] font-mono text-white/20">{card.unit}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className={`text-[8px] font-mono ${card.trend.startsWith('+') ? 'text-[#7BC47F]/60' : card.trend.startsWith('-') ? 'text-[#FF6B6B]/60' : 'text-white/20'}`}>{card.trend}</span>
+                        <span className="text-[6px] text-white/10">•</span>
+                        <span className="text-[7px] text-white/15 font-editorial italic">{card.status}</span>
+                      </div>
+                    </div>
+                    {isExpanded && (
+                      <div className="px-3.5 pb-4 space-y-3 animate-[fade-in_0.3s_ease-out] border-t border-white/[0.02] pt-3">
+                        <p className="text-[10px] text-white/25 font-editorial italic leading-relaxed">{card.description}</p>
+                        <div className="h-10">
+                          <svg className="w-full h-full" viewBox="0 0 200 30" preserveAspectRatio="none">
+                            <defs>
+                              <linearGradient id={`grad-${card.id}`} x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#C9A96E" stopOpacity="0.15" />
+                                <stop offset="100%" stopColor="#C9A96E" stopOpacity="0" />
+                              </linearGradient>
+                            </defs>
+                            <path d={`M${card.graphData.map((d, i) => { const x = (i / (card.graphData.length - 1)) * 200; const y = 30 - (d / Math.max(...card.graphData)) * 26; return `${i === 0 ? 'M' : 'L'}${x},${y}`; }).join(' ')} L200,30 L0,30 Z`} fill={`url(#grad-${card.id})`} />
+                            <path d={card.graphData.map((d, i) => { const x = (i / (card.graphData.length - 1)) * 200; const y = 30 - (d / Math.max(...card.graphData)) * 26; return `${i === 0 ? 'M' : 'L'}${x},${y}`; }).join(' ')} fill="none" stroke="#C9A96E" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
+                          </svg>
+                        </div>
+                        <div className="flex justify-between">
+                          {["Пн","Вт","Ср","Чт","Пт","Сб","Сег"].map((d, i) => (
+                            <span key={i} className={`text-[6px] font-mono ${i === 6 ? 'text-white/20' : 'text-white/8'}`}>{d}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <button onClick={() => setShowMetricsDetails(false)}
+              className="w-full py-3 text-[10px] font-mono text-white/20 hover:text-white/40 tracking-wider uppercase transition-colors">
+              Закрыть
+            </button>
+          </div>
+        </div>
       )}
 
-      {/* Floating Modals Connections */}
-      <NavigatorModal 
-        isOpen={showNavigator}
-        onClose={() => setShowNavigator(false)}
-        onApplyRecommendation={handleApplyAIRecommendation}
-        onStartPractice={handleStartPracticeSelect}
-      />
+      <VoiceAssistant isOpen={voiceAssistantOpen} onClose={() => setVoiceAssistantOpen(false)} onLaunchRitual={handleLaunchRitualAndTrack} userShineScore={metrics.score} />
 
-      <SubscriptionPlus 
-        isOpen={showSubscription}
-        onClose={() => setShowSubscription(false)}
-        onUnlockPlus={() => setIsPlus(true)}
-        alreadyPlus={isPlus}
-      />
+      <div className="fixed bottom-8 left-0 right-0 z-40 flex items-center justify-center px-5 pointer-events-none">
+        <nav className="h-12 flex-1 max-w-sm flex items-center justify-around px-4 rounded-2xl bg-black/50 backdrop-blur-2xl pointer-events-auto border border-white/[0.06] shadow-2xl">
+          {[
+            { key: "today" as const, icon: Compass, label: "День", glow: "rgba(201,169,110,0.15)" },
+            { key: "practice" as const, icon: BookOpen, label: "Путь", glow: "rgba(136,153,170,0.15)" },
+            { key: "progress" as const, icon: Trophy, label: "Рост", glow: "rgba(201,169,110,0.15)" },
+            { key: "profile" as const, icon: User, label: "Я", glow: "rgba(255,255,255,0.08)" },
+          ].map(({ key, icon: Icon, label, glow }) => {
+            const isActive = activeTab === key;
+            return (
+              <button key={key} onClick={() => setActiveTab(key)}
+                className={`relative flex flex-col items-center justify-center gap-0 h-full px-3 transition-all duration-500 ${isActive ? "text-white" : "text-white/20 hover:text-white/40"}`}>
+                <Icon size={15} style={isActive ? { filter: `drop-shadow(0 0 8px ${glow})` } : {}} />
+                <span className={`text-[7px] font-semibold tracking-[0.15em] uppercase mt-0.5 transition-opacity duration-300 ${isActive ? "opacity-100" : "opacity-0"}`}>{label}</span>
+              </button>
+            );
+          })}
+        </nav>
+        <button onClick={() => setVoiceAssistantOpen(true)}
+          className="w-12 h-12 rounded-2xl bg-black/30 backdrop-blur-2xl flex items-center justify-center active:scale-90 transition-transform pointer-events-auto border border-white/[0.06] shadow-2xl">
+          <Mic size={18} className="text-white/40" />
+        </button>
+      </div>
 
-      <RingCustomizer 
-        isOpen={showRingConfigurator}
-        onClose={() => setShowRingConfigurator(false)}
-        onConnectRing={() => {
-          setRingConnected(true);
-          setRingConfig({
-            shell: 'Glow Obsidian',
-            engraving: 'Я здесь'
-          });
-        }}
-      />
-        </motion.div>
+      {toast && (
+        <div className="fixed top-6 left-0 right-0 px-6 z-50 flex justify-center animate-[fade-in_0.4s_ease-out]">
+          <div className="max-w-sm w-full flex items-start gap-3 pb-3 border-b border-white/[0.03]">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <span className="text-[#C9A96E] text-[10px] flex-shrink-0">✦</span>
+              <h4 className="text-[12px] text-white/60 font-normal tracking-wide">{toast.title}</h4>
+              {toast.subtitle && <span className="text-[10px] text-white/20 font-editorial italic truncate">— {toast.subtitle}</span>}
+            </div>
+          </div>
+        </div>
       )}
-    </AnimatePresence>
+    </div>
   );
 }
+export { App };

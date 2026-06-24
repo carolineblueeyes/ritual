@@ -1,140 +1,138 @@
-import { HealthState } from '../types';
-import { healthBridge } from './HealthBridge';
+import { Capacitor } from '@capacitor/core';
+import { HealthConnect } from 'capacitor-health-connect';
+import type { RecordType, TimeRangeFilter, StoredRecord } from 'capacitor-health-connect';
 
-export interface HealthData {
-  hrv: number;
-  heartRate: number;
+export interface HealthMetrics {
   steps: number;
+  heartRate: number;
   sleepHours: number;
-  sleepQuality: number;
-  stressLevel: number;
-  activityCalories: number;
-  respiratoryRate: number;
-  energyLevel: number;
+  hrv?: number;
+  spo2?: number;
+  bodyTemperature?: number;
+  respirationRate?: number;
 }
 
-export type HealthPlatform = 'apple' | 'google' | 'simulator';
-
-export interface IHealthService {
-  readonly platform: HealthPlatform;
-  requestPermissions(): Promise<boolean>;
-  getCurrentHealth(): Promise<HealthData>;
-  calculateHealthState(data: HealthData): { state: HealthState; score: number };
-  isAvailable(): Promise<boolean>;
+function isRecordOfType(record: StoredRecord, type: RecordType): boolean {
+  return record.type === type;
 }
 
-/**
- * Симулятор для браузера — возвращает разные данные каждый раз
- */
-class HealthSimulator implements IHealthService {
-  readonly platform: HealthPlatform = 'simulator';
-
-  async requestPermissions(): Promise<boolean> {
-    return true;
-  }
-
-  async getCurrentHealth(): Promise<HealthData> {
-    return {
-      hrv: this.randomBetween(25, 75),
-      heartRate: this.randomBetween(60, 85),
-      steps: this.randomBetween(3000, 10000),
-      sleepHours: this.randomBetween(5.5, 8.5),
-      sleepQuality: this.randomBetween(40, 95),
-      stressLevel: this.randomBetween(20, 70),
-      activityCalories: this.randomBetween(150, 600),
-      respiratoryRate: this.randomBetween(12, 18),
-      energyLevel: this.randomBetween(40, 95),
-    };
-  }
-
-  calculateHealthState(data: HealthData): { state: HealthState; score: number } {
-    return calculateHealthFromData(data);
-  }
-
-  async isAvailable(): Promise<boolean> { return true; }
-
-  private randomBetween(min: number, max: number): number {
-    return parseFloat((Math.random() * (max - min) + min).toFixed(1));
-  }
-}
-
-/**
- * Нативная реализация через HealthBridge (cordova-plugin-health).
- * Запрашивает разрешения и читает реальные данные с устройства.
- */
-class HealthNative implements IHealthService {
-  readonly platform: HealthPlatform = 'google';
-  private permissionsGranted = false;
-
-  async requestPermissions(): Promise<boolean> {
-    // Инициализируем bridge и запрашиваем разрешения
-    await healthBridge.initialize();
-    this.permissionsGranted = await healthBridge.requestPermissions();
-    return this.permissionsGranted;
-  }
-
-  async getCurrentHealth(): Promise<HealthData> {
-    if (!this.permissionsGranted) {
-      const granted = await this.requestPermissions();
-      if (!granted) {
-        throw new Error('Health permissions not granted');
-      }
-    }
-
-    const data = await healthBridge.getHealthData();
-    console.log('[HealthNative] Real health data received:', data);
-    return data;
-  }
-
-  calculateHealthState(data: HealthData): { state: HealthState; score: number } {
-    return calculateHealthFromData(data);
-  }
-
+export const HealthService = {
   async isAvailable(): Promise<boolean> {
+    if (!Capacitor.isNativePlatform()) return false;
     try {
-      return await healthBridge.isAvailable();
+      const result = await HealthConnect.checkAvailability();
+      return result.availability === 'Available';
     } catch {
       return false;
     }
-  }
-}
+  },
 
-/**
- * Чистая функция расчёта состояния здоровья.
- */
-export function calculateHealthFromData(data: HealthData): { state: HealthState; score: number } {
-  const hrvScore = Math.min(100, (data.hrv / 100) * 100);
-  const hrScore = Math.max(0, 100 - Math.abs(70 - data.heartRate) * 2);
-  const sleepScore = Math.min(100, (data.sleepHours / 8) * 100);
-  const stressScore = Math.max(0, 100 - data.stressLevel);
-  const stepsScore = Math.min(100, (data.steps / 10000) * 100);
+  async requestPermissions(): Promise<boolean> {
+    if (!Capacitor.isNativePlatform()) {
+      return true;
+    }
+    try {
+      const result = await HealthConnect.requestHealthPermissions({
+        read: ['Steps', 'RestingHeartRate', 'HeartRateSeries', 'OxygenSaturation', 'BodyTemperature', 'RespiratoryRate'],
+        write: [],
+      });
+      return result.hasAllPermissions;
+    } catch (error) {
+      console.error('Health Connect permission error:', error);
+      return false;
+    }
+  },
 
-  const totalScore = Math.round(
-    hrvScore * 0.25 +
-    hrScore * 0.15 +
-    sleepScore * 0.25 +
-    stressScore * 0.2 +
-    stepsScore * 0.15
-  );
+  async fetchCurrentMetrics(): Promise<HealthMetrics> {
+    if (!Capacitor.isNativePlatform()) {
+      return {
+        steps: Math.floor(Math.random() * 4000) + 3000,
+        heartRate: Math.floor(Math.random() * 25) + 65,
+        sleepHours: parseFloat((Math.random() * 3 + 5).toFixed(1)),
+        hrv: Math.floor(Math.random() * 40) + 40,
+        spo2: Math.floor(Math.random() * 3) + 97,
+        bodyTemperature: parseFloat((Math.random() * 0.6 + 36.2).toFixed(1)),
+        respirationRate: Math.floor(Math.random() * 6) + 12,
+      };
+    }
 
-  let state: HealthState;
-  if (totalScore >= 80) state = 'Shining';
-  else if (totalScore >= 60) state = 'Balance';
-  else if (totalScore >= 40) state = 'Tension';
-  else state = 'Overload';
+    try {
+      const now = new Date();
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  return { state, score: totalScore };
-}
+      const timeRangeFilter: TimeRangeFilter = {
+        type: 'between',
+        startTime: startOfDay,
+        endTime: now,
+      };
 
-export function createHealthService(): IHealthService {
-  const isNative = typeof (window as any).Capacitor !== 'undefined' && 
-                   (window as any).Capacitor.isNativePlatform();
-  if (isNative) {
-    console.log('[HealthService] Native platform detected — using HealthBridge');
-    return new HealthNative();
-  }
-  console.log('[HealthService] Browser platform — using simulator');
-  return new HealthSimulator();
-}
+      const [stepsResult, heartRateResult, spo2Result, tempResult] = await Promise.allSettled([
+        HealthConnect.readRecords({ type: 'Steps', timeRangeFilter }),
+        HealthConnect.readRecords({ type: 'RestingHeartRate', timeRangeFilter }),
+        HealthConnect.readRecords({ type: 'OxygenSaturation', timeRangeFilter }),
+        HealthConnect.readRecords({ type: 'BodyTemperature', timeRangeFilter }),
+      ]);
 
-export const healthService = createHealthService();
+      let steps = 0;
+      let heartRate = 72;
+      let spo2: number | undefined;
+      let bodyTemperature: number | undefined;
+
+      if (stepsResult.status === 'fulfilled') {
+        const stepsRecords = stepsResult.value.records.filter(r => isRecordOfType(r, 'Steps'));
+        steps = stepsRecords.reduce((sum, r) => {
+          if (r.type === 'Steps') return sum + (r.count || 0);
+          return sum;
+        }, 0);
+      }
+
+      if (heartRateResult.status === 'fulfilled') {
+        const hrRecords = heartRateResult.value.records.filter(r => isRecordOfType(r, 'RestingHeartRate'));
+        if (hrRecords.length > 0) {
+          const latest = hrRecords[hrRecords.length - 1];
+          if (latest.type === 'RestingHeartRate') {
+            heartRate = latest.beatsPerMinute;
+          }
+        }
+      }
+
+      if (spo2Result.status === 'fulfilled') {
+        const spo2Records = spo2Result.value.records.filter(r => isRecordOfType(r, 'OxygenSaturation'));
+        if (spo2Records.length > 0) {
+          const latest = spo2Records[spo2Records.length - 1];
+          if (latest.type === 'OxygenSaturation') {
+            spo2 = latest.percentage.value;
+          }
+        }
+      }
+
+      if (tempResult.status === 'fulfilled') {
+        const tempRecords = tempResult.value.records.filter(r => isRecordOfType(r, 'BodyTemperature'));
+        if (tempRecords.length > 0) {
+          const latest = tempRecords[tempRecords.length - 1];
+          if (latest.type === 'BodyTemperature') {
+            bodyTemperature = latest.temperature.value;
+          }
+        }
+      }
+
+      return { steps, heartRate, sleepHours: 0, hrv: 0, spo2, bodyTemperature, respirationRate: 0 };
+    } catch (error) {
+      console.error('Error fetching health metrics:', error);
+      return { steps: 0, heartRate: 72, sleepHours: 0, respirationRate: 0 };
+    }
+  },
+
+  async syncWithBackend(userId: string, metrics: HealthMetrics) {
+    try {
+      const response = await fetch('/api/sync-health', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, metrics, timestamp: new Date().toISOString() }),
+      });
+      return await response.json();
+    } catch (e) {
+      console.error('Error syncing health data:', e);
+    }
+  },
+};

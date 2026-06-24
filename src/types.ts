@@ -1,90 +1,40 @@
-export type HealthState = 'Shining' | 'Balance' | 'Tension' | 'Overload' | 'NoData';
-
-export type PracticeGroupType = 'Исток' | 'Тишина' | 'Энергия' | 'Ясность';
-
-export interface Practice {
-  id: string;
+export interface UserProfile {
   name: string;
-  group: PracticeGroupType;
-  duration: string; // e.g. "5:30" or "4:30"
-  category: string;
-  scientificBase: string;
-  howItWorks: string;
-  result: string;
-  isUnlocked: boolean; // True for Исток, or if user is Ritual Plus
+  isSubscribed: boolean;
+  subscriptionExpiry: string | null;
+  activeBg: "water" | "sky" | "aurora" | "mystic";
+  xp: number;
+  streak: number;
+  totalRitualsCount: number;
+  isCustomRingPreordered: boolean;
+  ringOrderCode: string | null;
+  ringMaterial: "matte_black" | "glow_obsidian";
+  ringEngraving: string;
+  ringSize: number | null;
+  ringBatteryCharge: number;
+  isAppleHealthConnected: boolean;
+  isGoogleFitConnected: boolean;
+  isHealthConnectConnected: boolean;
+  isCoreRingConnected: boolean;
+  weeklyGoal: number; // e.g. 5
+  achievements: string[]; // list of unlocked achievement IDs
 }
 
-export interface UserStats {
-  daysPractice: number;
-  ritualsCompleted: number;
-  daysStreak: number;
-}
+export type BiometricStatus = "сияешь" | "баланс" | "напряжение" | "перегруз" | "нет данных";
 
-export interface Achievement {
-  id: string;
-  title: string;
-  description: string;
-  iconType: string; // e.g. "spark", "ring", "points", "sevenDots", "thirtyDots", "runner", "crystalOne", "crystalThree", "focus", "heart", "road", "crystalRow"
-  unlocked: boolean;
-}
-
-export interface Article {
-  id: string;
-  title: string;
-  description: string;
-  content: string;
-}
-
-export interface RingSetup {
-  shell: 'Matte Titanium' | 'Glow Obsidian';
-  engraving: string;
-}
-
-export interface ActivityLog {
-  id: string;
-  type: 'walk' | 'run' | 'bike' | 'focus' | 'audio' | 'breathing';
-  date: string;
-  durationMinutes: number;
-  distanceKm?: number;
-  avgPace?: string;
-  selectedState?: HealthState;
-  cheated?: boolean;
-  practiceName?: string;
-}
-
-export interface EmotionPreset {
-  id: string;
-  label: string;
-  description: string;
-  practiceId: string;
-  healthState: HealthState;
-}
-
-export interface NavigatorRecomendation {
-  state: HealthState;
-  phrase: string;
-  reason: string;
-  ritualName: string;
-  ritualGroup: PracticeGroupType;
-  duration: string;
-  instructions: string;
-}
-
-export interface PathwayLevel {
-  id: string;
-  chapterIndex: number; // 1, 2, 3, 4
-  levelIndex: number; // 1 to 5 (or 6)
-  name: string;
-  description: string;
-  duration: string;
-  group: PracticeGroupType;
-  overallIndex: number; // 0 to 20
-}
-
-export interface MetricEffect {
-  metric: string;
-  label: string;
-  change: number;
+export interface RitualHealthMetrics {
+  score: number; // 0 - 100
+  status: BiometricStatus;
+  statusText: string;
+  hrv: number; // ms
+  sleepDuration: number; // hours
+  restingHeartRate: number; // bpm
+  activitySteps: number; // steps
+  bodyTemperature: number; // °C
+  spo2: number; // %
+  respirationRate: number; // breaths per minute
+  energyLevel: number; // 0 - 100
+  stressLevel: number; // 0 - 100
 }
 
 export interface PracticeImpact {
@@ -92,10 +42,84 @@ export interface PracticeImpact {
   ritualTitle: string;
   group: string;
   date: string;
-  effects: MetricEffect[];
+  effects: {
+    metric: keyof RitualHealthMetrics;
+    change: number; // absolute change
+    label: string;
+  }[];
 }
 
-// ===== Типы для скриптов ритуалов (из документа RITUAL) =====
+export interface RitualActivityLog {
+  id: string;
+  ritualId: string;
+  title: string;
+  group: "Исток" | "Тишина" | "Энергия" | "Ясность";
+  date: string; // ISO String
+  duration: number; // seconds
+  selectedState?: string;
+  cheated?: boolean;
+  distractions?: number;
+  distanceKm?: number;
+  avgPace?: string;
+  notes?: string;
+  manual?: boolean;
+}
+
+export interface DayScheduleSlot {
+  id: string;
+  time: string;
+  title: string;
+  ritualId: string | null;
+  completed: boolean;
+  color: string;
+}
+
+export interface Article {
+  id: string;
+  title: string;
+  subtitle: string;
+  content: string;
+  imageQuery: string;
+}
+
+export interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  unlockedCondition: string;
+}
+
+export interface PracticeItem {
+  id: string;
+  name: string;
+  group: 'Исток' | 'Тишина' | 'Энергия' | 'Ясность';
+  duration: string;
+  category: string;
+  isFree?: boolean;
+  visualType?: "breathing" | "spectrogram" | "journal" | "focus";
+}
+
+export interface PracticeLevel {
+  id: string;
+  number: number;
+  title: string;
+  metaphor: string;
+  result: string;
+  durationText: string;
+  isPremium: boolean;
+}
+
+export interface Chapter {
+  id: string;
+  title: string;
+  metaphor: string;
+  result: string;
+  color: string;
+  levels: PracticeLevel[];
+}
+
+// ===== Типы для скриптов ритуалов (из документа RITUAL.txt) =====
 
 export type PhaseType = 'пролог' | 'вступление' | 'практика' | 'микро_чек' | 'инсайт' | 'ключевая_фраза' | 'задание' | 'закрытие';
 
@@ -142,20 +166,20 @@ export interface ScriptSegment {
 }
 
 export interface HealthImpact {
-  metric: string;
+  metric: keyof RitualHealthMetrics;
   expectedChange: number;
   confidence: 'high' | 'medium' | 'low';
 }
 
 export interface PostRitualLink {
   ritualId: string;
-  group: PracticeGroupType;
+  group: 'Исток' | 'Тишина' | 'Энергия' | 'Ясность';
   reason: string;
 }
 
 export interface RitualScript {
   ritualId: string;
-  group: PracticeGroupType;
+  group: 'Исток' | 'Тишина' | 'Энергия' | 'Ясность';
   title: string;
   durationSeconds: number;
   category: string;
@@ -164,5 +188,7 @@ export interface RitualScript {
   segments: ScriptSegment[];
   expectedImpacts: HealthImpact[];
   postLinks: PostRitualLink[];
+  shortVersion?: Omit<RitualScript, 'shortVersion'>;
 }
 
+export type GroupName = 'Исток' | 'Тишина' | 'Энергия' | 'Ясность';

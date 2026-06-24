@@ -1,0 +1,11 @@
+{
+  "appId": "com.ritual.app",
+  "appName": "Ritual",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "HealthConnect": {}
+  }
+}
