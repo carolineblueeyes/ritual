@@ -1,6 +1,6 @@
 import { Capacitor } from '@capacitor/core';
-import { HealthConnect } from 'capacitor-health-connect';
-import type { RecordType, TimeRangeFilter, StoredRecord } from 'capacitor-health-connect';
+import { Health } from '@capgo/capacitor-health';
+import type { HealthDataType } from '@capgo/capacitor-health';
 
 export interface HealthMetrics {
   steps: number;
@@ -10,36 +10,45 @@ export interface HealthMetrics {
   spo2?: number;
   bodyTemperature?: number;
   respirationRate?: number;
-}
-
-function isRecordOfType(record: StoredRecord, type: RecordType): boolean {
-  return record.type === type;
+  foundCount?: number;
 }
 
 export const HealthService = {
   async isAvailable(): Promise<boolean> {
     if (!Capacitor.isNativePlatform()) return false;
     try {
-      const result = await HealthConnect.checkAvailability();
-      return result.availability === 'Available';
+      const result = await Health.isAvailable();
+      return result.available;
     } catch {
       return false;
     }
   },
 
-  async requestPermissions(): Promise<boolean> {
+  async requestPermissions(): Promise<{ granted: boolean; message?: string }> {
     if (!Capacitor.isNativePlatform()) {
-      return true;
+      return { granted: true };
+    }
+    const available = await this.isAvailable();
+    if (!available) {
+      return { granted: false, message: 'Google Fit не найден на устройстве' };
     }
     try {
-      const result = await HealthConnect.requestHealthPermissions({
-        read: ['Steps', 'RestingHeartRate', 'HeartRateSeries', 'OxygenSaturation', 'BodyTemperature', 'RespiratoryRate'],
+      const readTypes: HealthDataType[] = [
+        'steps',
+        'restingHeartRate',
+        'heartRate',
+        'oxygenSaturation',
+        'bodyTemperature',
+        'respiratoryRate',
+      ];
+      const status = await Health.requestAuthorization({
+        read: readTypes,
         write: [],
       });
-      return result.hasAllPermissions;
+      return { granted: status.readAuthorized.length > 0 };
     } catch (error) {
-      console.error('Health Connect permission error:', error);
-      return false;
+      console.error('Health permission error:', error);
+      return { granted: false, message: 'Ошибка при запросе разрешений' };
     }
   },
 
@@ -58,68 +67,66 @@ export const HealthService = {
 
     try {
       const now = new Date();
-      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const startDate = sevenDaysAgo.toISOString();
+      const endDate = now.toISOString();
 
-      const timeRangeFilter: TimeRangeFilter = {
-        type: 'between',
-        startTime: startOfDay,
-        endTime: now,
-      };
-
-      const [stepsResult, heartRateResult, spo2Result, tempResult] = await Promise.allSettled([
-        HealthConnect.readRecords({ type: 'Steps', timeRangeFilter }),
-        HealthConnect.readRecords({ type: 'RestingHeartRate', timeRangeFilter }),
-        HealthConnect.readRecords({ type: 'OxygenSaturation', timeRangeFilter }),
-        HealthConnect.readRecords({ type: 'BodyTemperature', timeRangeFilter }),
+      const [stepsResult, heartRateResult, spo2Result, tempResult, respResult] = await Promise.allSettled([
+        Health.readSamples({ dataType: 'steps', startDate, endDate, limit: 10000 }),
+        Health.readSamples({ dataType: 'restingHeartRate', startDate, endDate, limit: 100 }),
+        Health.readSamples({ dataType: 'oxygenSaturation', startDate, endDate, limit: 100 }),
+        Health.readSamples({ dataType: 'bodyTemperature', startDate, endDate, limit: 100 }),
+        Health.readSamples({ dataType: 'respiratoryRate', startDate, endDate, limit: 100 }),
       ]);
 
       let steps = 0;
       let heartRate = 72;
       let spo2: number | undefined;
       let bodyTemperature: number | undefined;
+      let respirationRate: number | undefined;
+      let foundCount = 0;
 
       if (stepsResult.status === 'fulfilled') {
-        const stepsRecords = stepsResult.value.records.filter(r => isRecordOfType(r, 'Steps'));
-        steps = stepsRecords.reduce((sum, r) => {
-          if (r.type === 'Steps') return sum + (r.count || 0);
-          return sum;
-        }, 0);
+        steps = stepsResult.value.samples.reduce((sum, s) => sum + s.value, 0);
+        if (steps > 0) foundCount++;
       }
 
       if (heartRateResult.status === 'fulfilled') {
-        const hrRecords = heartRateResult.value.records.filter(r => isRecordOfType(r, 'RestingHeartRate'));
-        if (hrRecords.length > 0) {
-          const latest = hrRecords[hrRecords.length - 1];
-          if (latest.type === 'RestingHeartRate') {
-            heartRate = latest.beatsPerMinute;
-          }
+        const samples = heartRateResult.value.samples;
+        if (samples.length > 0) {
+          heartRate = samples[samples.length - 1].value;
+          foundCount++;
         }
       }
 
       if (spo2Result.status === 'fulfilled') {
-        const spo2Records = spo2Result.value.records.filter(r => isRecordOfType(r, 'OxygenSaturation'));
-        if (spo2Records.length > 0) {
-          const latest = spo2Records[spo2Records.length - 1];
-          if (latest.type === 'OxygenSaturation') {
-            spo2 = latest.percentage.value;
-          }
+        const samples = spo2Result.value.samples;
+        if (samples.length > 0) {
+          spo2 = samples[samples.length - 1].value;
+          foundCount++;
         }
       }
 
       if (tempResult.status === 'fulfilled') {
-        const tempRecords = tempResult.value.records.filter(r => isRecordOfType(r, 'BodyTemperature'));
-        if (tempRecords.length > 0) {
-          const latest = tempRecords[tempRecords.length - 1];
-          if (latest.type === 'BodyTemperature') {
-            bodyTemperature = latest.temperature.value;
-          }
+        const samples = tempResult.value.samples;
+        if (samples.length > 0) {
+          bodyTemperature = samples[samples.length - 1].value;
+          foundCount++;
         }
       }
 
-      return { steps, heartRate, sleepHours: 0, hrv: 0, spo2, bodyTemperature, respirationRate: 0 };
+      if (respResult.status === 'fulfilled') {
+        const samples = respResult.value.samples;
+        if (samples.length > 0) {
+          respirationRate = samples[samples.length - 1].value;
+          foundCount++;
+        }
+      }
+
+      return { steps, heartRate, sleepHours: 0, hrv: 0, spo2, bodyTemperature, respirationRate: respirationRate ?? 0, foundCount };
     } catch (error) {
       console.error('Error fetching health metrics:', error);
-      return { steps: 0, heartRate: 72, sleepHours: 0, respirationRate: 0 };
+      return { steps: 0, heartRate: 72, sleepHours: 0, respirationRate: 0, foundCount: 0 };
     }
   },
 

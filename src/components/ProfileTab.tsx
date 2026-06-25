@@ -17,11 +17,12 @@ interface ProfileTabProps {
   onConfigureRing: (material: "matte_black" | "glow_obsidian", engraving: string, size: number) => void;
   onPurchaseSubscription: (isSubscribed: boolean) => void;
   onShowToast?: (title: string, subtitle?: string) => void;
+  onOpenHealthConnectSettings?: () => void;
 }
 
 export const ProfileTab: React.FC<ProfileTabProps> = ({
   profile, metrics, completedLevels, onUpdateBg, onLaunchRitual, onUpdateProfileName,
-  onToggleAppleHealth, onToggleGoogleFit, onToggleHealthConnect, onToggleCoreRing, onConfigureRing, onPurchaseSubscription, onShowToast,
+  onToggleAppleHealth, onToggleGoogleFit, onToggleHealthConnect, onToggleCoreRing, onConfigureRing, onPurchaseSubscription, onShowToast, onOpenHealthConnectSettings,
 }) => {
   const [showSubscription, setShowSubscription] = useState(false);
   const [selectedSubTab, setSelectedSubTab] = useState(0);
@@ -152,10 +153,18 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
             <span className={`text-[10px] font-mono ${profile.isGoogleFitConnected ? "text-[#7BC47F]/60" : "text-white/20"}`}>
               {profile.isGoogleFitConnected ? "Подключено" : "Отключено"}</span>
           </div>
-          <div onClick={onToggleHealthConnect} className="flex justify-between items-center py-3 border-b border-white/[0.02] cursor-pointer">
-            <div className="flex items-center gap-3"><Heart size={14} className="text-green-400/60" /><span className="text-xs text-white/60">Health Connect (Android)</span></div>
-            <span className={`text-[10px] font-mono ${profile.isHealthConnectConnected ? "text-[#7BC47F]/60" : "text-white/20"}`}>
-              {profile.isHealthConnectConnected ? "Подключено" : "Подключить"}</span>
+          <div className="border-b border-white/[0.02]">
+            <div onClick={onToggleHealthConnect} className="flex justify-between items-center py-3 cursor-pointer">
+              <div className="flex items-center gap-3"><Heart size={14} className="text-green-400/60" /><span className="text-xs text-white/60">Google Fit</span></div>
+              <span className={`text-[10px] font-mono ${profile.isHealthConnectConnected ? "text-[#7BC47F]/60" : "text-white/20"}`}>
+                {profile.isHealthConnectConnected ? "Подключено" : "Подключить"}</span>
+            </div>
+            {profile.isHealthConnectConnected && onOpenHealthConnectSettings && (
+              <button onClick={onOpenHealthConnectSettings}
+                className="w-full pb-3 text-[9px] font-mono text-white/20 hover:text-white/40 tracking-wider text-left pl-1 transition-colors">
+                ⚙ Настроить источники данных
+              </button>
+            )}
           </div>
           <div onClick={onToggleCoreRing} className="flex justify-between items-center py-3 cursor-pointer">
             <div className="flex items-center gap-3"><Heart size={14} className="text-[#C9A96E]/60" /><span className="text-xs text-white/60">Ritual Core</span></div>

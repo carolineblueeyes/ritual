@@ -196,9 +196,15 @@ export default function App() {
       setProfile((prev) => ({ ...prev, isHealthConnectConnected: false }));
       return;
     }
-    const granted = await HealthService.requestPermissions();
-    if (granted) {
+    const available = await HealthService.isAvailable();
+    if (!available) {
+      triggerToast("Google Fit не найден", "Установите Google Fit из Play Market");
+      return;
+    }
+    const result = await HealthService.requestPermissions();
+    if (result.granted) {
       const healthMetrics = await HealthService.fetchCurrentMetrics();
+      const foundCount = healthMetrics.foundCount ?? 0;
       setMetrics((m) => ({
         ...m,
         score: Math.min(100, Math.round((healthMetrics.heartRate ? 100 - Math.abs(healthMetrics.heartRate - 70) : m.score) + (healthMetrics.steps > 5000 ? 10 : 0))),
@@ -206,12 +212,17 @@ export default function App() {
         activitySteps: healthMetrics.steps || m.activitySteps,
         bodyTemperature: healthMetrics.bodyTemperature ?? m.bodyTemperature,
         spo2: healthMetrics.spo2 ?? m.spo2,
+        respirationRate: healthMetrics.respirationRate || m.respirationRate,
       }));
       setProfile((prev) => ({ ...prev, isHealthConnectConnected: true }));
-      triggerToast("Health Connect подключён", "Данные синхронизированы");
+      if (foundCount > 0) {
+        triggerToast("Данные загружены", `Найдено показателей: ${foundCount} из 5`);
+      } else {
+        triggerToast("Данных не найдено", "Настройте синхронизацию Samsung Health → Google Fit");
+      }
       HealthService.syncWithBackend(profile.name || "user", healthMetrics);
     } else {
-      triggerToast("Доступ не предоставлен", "Проверьте настройки Health Connect");
+      triggerToast(result.message || "Доступ не предоставлен", "Проверьте настройки");
     }
   };
 
@@ -276,6 +287,7 @@ export default function App() {
             onConfigureRing={(mat, eng) => setProfile((p) => ({ ...p, isCustomRingPreordered: true, ringMaterial: mat, ringEngraving: eng }))}
             onPurchaseSubscription={(sub) => setProfile((p) => ({ ...p, isSubscribed: sub }))}
             onShowToast={triggerToast}
+            onOpenHealthConnectSettings={() => HealthService.openHealthConnectSettings()}
           />
         )}
       </div>

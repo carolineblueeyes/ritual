@@ -2,5 +2,5 @@
 include ':capacitor-android'
 project(':capacitor-android').projectDir = new File('../node_modules/@capacitor/android/capacitor')
 
-include ':capacitor-health-connect'
-project(':capacitor-health-connect').projectDir = new File('../node_modules/capacitor-health-connect/android')
+include ':capacitor-health'
+project(':capacitor-health').projectDir = new File('../node_modules/@capgo/capacitor-health/android')
